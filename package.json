@@ -1,0 +1,23 @@
+{
+  "name": "gamba",
+  "version": "1.0.0",
+  "description": "A bot to create predictions based on Twitch Channel Points Predictions",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tobyjzstay/Gamba.git"
+  },
+  "author": "Toby Stayner <toby@swengineer.dev> (https://swengineer.dev/)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tobyjzstay/Gamba/issues"
+  },
+  "homepage": "https://github.com/tobyjzstay/Gamba#readme",
+  "dependencies": {
+    "discord.js": "^13.6.0"
+  }
+}
