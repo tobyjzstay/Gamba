@@ -95,7 +95,9 @@ async function addAllPoints(guild, increment) {
 
     let updatedServer = {};
     for (let user in server) {
-      updatedServer[user] = server[user] + increment;
+      const isBot = (await client.users.fetch(user)).bot;
+      if (isBot) updatedServer[user] = 0;
+      else updatedServer[user] = server[user] + increment;
     }
 
     fs.writeFileSync(
@@ -145,6 +147,7 @@ client.on("interactionCreate", async (interaction) => {
       const server = await readData(guild);
       let roleMembers = [];
       role.members.forEach((member) => {
+        if (member.user.bot) return;
         const points = server[member.user.id];
         const userId = member.user.tag; // TODO change to member.user.id
         const tmp = {};
