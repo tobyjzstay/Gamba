@@ -10,11 +10,10 @@ const { Client, Intents, MessageEmbed } = require("discord.js");
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
 const { clientId, token } = require("./config.json");
-const { getEnvironmentData } = require("worker_threads");
+
 const client = new Client({
   intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS],
 });
-
 const rest = new REST({ version: "9" }).setToken(token);
 
 const commands = [
@@ -24,7 +23,7 @@ const commands = [
     options: [
       {
         name: "user",
-        description: "The user to get points",
+        description: "User to get points",
         type: DiscordJS.Constants.ApplicationCommandOptionTypes.USER,
       },
     ],
@@ -35,12 +34,105 @@ const commands = [
     options: [
       {
         name: "role",
-        description: "The role to show leaderboard",
+        description: "Role to show leaderboard",
         type: DiscordJS.Constants.ApplicationCommandOptionTypes.ROLE,
       },
       {
         name: "results",
         description: "Number of results to show",
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+      },
+    ],
+  },
+  {
+    name: "prediction",
+    description: "Create a new prediction",
+    options: [
+      {
+        name: "name",
+        description: "Name of the prediction",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.STRING,
+      },
+      {
+        name: "outcome1",
+        description: "First possible outcome",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.STRING,
+      },
+      {
+        name: "outcome2",
+        description: "Second possible outcome",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.STRING,
+      },
+      {
+        name: "minutes",
+        description: "Number of minutes users have to predict",
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+      },
+      {
+        name: "hours",
+        description: "Number of hours users have to predict",
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+      },
+      {
+        name: "days",
+        description: "Number of days users have to predict",
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+      },
+    ],
+  },
+  {
+    name: "predict",
+    description: "Predict with points",
+    options: [
+      {
+        name: "id",
+        description: "ID of the prediction",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+      },
+      {
+        name: "index",
+        description: "Outcome index prediction",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+      },
+      {
+        name: "amount",
+        description: "Number of points",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.STRING,
+      },
+    ],
+  },
+  {
+    name: "end",
+    description: "End a prediction",
+    options: [
+      {
+        name: "id",
+        description: "ID of the prediction",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+      },
+      {
+        name: "index",
+        description: "Outcome index prediction",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+      },
+    ],
+  },
+  {
+    name: "delete",
+    description: "Delete a prediction",
+    options: [
+      {
+        name: "id",
+        description: "ID of the prediction",
+        required: true,
         type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
       },
     ],
@@ -131,6 +223,7 @@ client.on("guildCreate", async (guild) => {
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isCommand()) return;
+  if (interaction.user.bot || !interaction.channel) return;
 
   const guild = interaction.guild;
 
@@ -170,13 +263,13 @@ client.on("interactionCreate", async (interaction) => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, results);
 
-      let memberLeaderboard = "";
+      let userLeaderboard = "";
       let pointsLeaderboard = "";
       let prevRank;
       let prevPoints;
       for (let i = 0; i < leaderboard.length; i++) {
-        if (memberLeaderboard && pointsLeaderboard) {
-          memberLeaderboard += "\n";
+        if (userLeaderboard && pointsLeaderboard) {
+          userLeaderboard += "\n";
           pointsLeaderboard += "\n";
         }
         const user = leaderboard[i][0][0];
@@ -184,7 +277,7 @@ client.on("interactionCreate", async (interaction) => {
         let rank;
         if (points === prevPoints) rank = prevRank;
         else rank = i + 1;
-        memberLeaderboard += `**${rank}. **${user}`;
+        userLeaderboard += `**${rank}. **${user}`;
         pointsLeaderboard += `${points}`;
         prevRank = rank;
         prevPoints = points;
@@ -199,8 +292,8 @@ client.on("interactionCreate", async (interaction) => {
         )
         .addFields(
           {
-            name: "\u1CBC\u1CBCMember",
-            value: `${memberLeaderboard}`,
+            name: "\u1CBC\u1CBCUser",
+            value: `${userLeaderboard}`,
             inline: true,
           },
           {
