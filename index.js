@@ -184,7 +184,7 @@ client.on("interactionCreate", async (interaction) => {
         let rank;
         if (points === prevPoints) rank = prevRank;
         else rank = i + 1;
-        memberLeaderboard += `**${rank}.** ${user}`;
+        memberLeaderboard += `**${rank}. **${user}`;
         pointsLeaderboard += `${points}`;
         prevRank = rank;
         prevPoints = points;
@@ -199,7 +199,7 @@ client.on("interactionCreate", async (interaction) => {
         )
         .addFields(
           {
-            name: "Member",
+            name: "\u1CBC\u1CBCMember",
             value: `${memberLeaderboard}`,
             inline: true,
           },
