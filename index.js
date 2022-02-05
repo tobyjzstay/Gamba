@@ -10,7 +10,9 @@ const { Client, Intents } = require("discord.js");
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
 const { clientId, token } = require("./config.json");
-const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
+const client = new Client({
+  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS],
+});
 
 const commands = [
   {
@@ -42,23 +44,36 @@ const rest = new REST({ version: "9" }).setToken(token);
   }
 })();
 
-async function initialiseGuild(guildId) {
-  fs.writeFileSync(`data/${guildId}.json`, "{}", "utf-8");
+async function initialiseGuild(guild) {
+  let data = {};
+  await guild.members
+    .fetch()
+    .then((members) => members.forEach((member) => (data[member.user.id] = 0)));
+  fs.writeFileSync(
+    `data/${guild.id}.json`,
+    JSON.stringify(data, null, 2),
+    "utf-8"
+  );
 }
 
-async function getPoints(guildId, userId) {
+async function getPoints(guild, userId) {
   try {
     const data = JSON.parse(
-      fs.readFileSync(`data/${guildId}.json`, "utf-8", (err) => {
+      fs.readFileSync(`data/${guild.id}.json`, "utf-8", (err) => {
         console.error(err);
       })
     );
     return data[userId];
   } catch (err) {
     console.error(err);
-    return initialiseGuild(guildId).then(await getPoints(guildId, userId));
+    await initialiseGuild(guild);
+    return getPoints(guild, userId);
   }
 }
+
+client.on("guildCreate", async (guild) => {
+  initialiseGuild(guild);
+});
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isCommand()) return;
@@ -67,8 +82,8 @@ client.on("interactionCreate", async (interaction) => {
     case "points":
       let user = interaction.options.getUser("user");
       if (!user) user = interaction.user;
-      const guildId = interaction.guildId;
-      const points = await getPoints(guildId, user.id);
+      const guild = interaction.guild;
+      const points = await getPoints(guild, user.id);
       await interaction.reply({
         content: `${user.tag} has ${points ? points : 0} points.`,
         fetchReply: true,
