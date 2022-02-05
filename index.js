@@ -6,10 +6,11 @@
 
 const fs = require("fs");
 const DiscordJS = require("discord.js");
-const { Client, Intents } = require("discord.js");
+const { Client, Intents, MessageEmbed } = require("discord.js");
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
 const { clientId, token } = require("./config.json");
+const { getEnvironmentData } = require("worker_threads");
 const client = new Client({
   intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS],
 });
@@ -25,6 +26,17 @@ const commands = [
         name: "user",
         description: "The user to get points",
         type: DiscordJS.Constants.ApplicationCommandOptionTypes.USER,
+      },
+    ],
+  },
+  {
+    name: "leaderboard",
+    description: "Show points leaderboard",
+    options: [
+      {
+        name: "role",
+        description: "The role to show leaderboard",
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.ROLE,
       },
     ],
   },
@@ -60,11 +72,7 @@ async function initialiseGuild(guild) {
 
 async function getPoints(guild, userId) {
   try {
-    const server = JSON.parse(
-      fs.readFileSync(`data/${guild.id}.json`, "utf-8", (err) => {
-        console.error(err);
-      })
-    );
+    const server = await readData(guild);
     return server[userId];
   } catch (err) {
     console.error(err);
@@ -73,13 +81,17 @@ async function getPoints(guild, userId) {
   }
 }
 
+async function readData(guild) {
+  return await JSON.parse(
+    fs.readFileSync(`data/${guild.id}.json`, "utf-8", (err) => {
+      console.error(err);
+    })
+  );
+}
+
 async function addAllPoints(guild, increment) {
   try {
-    const server = JSON.parse(
-      fs.readFileSync(`data/${guild.id}.json`, "utf-8", (err) => {
-        console.error(err);
-      })
-    );
+    const server = await readData(guild);
 
     let updatedServer = {};
     for (let user in server) {
@@ -113,11 +125,12 @@ client.on("guildCreate", async (guild) => {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isCommand()) return;
 
+  const guild = interaction.guild;
+
   switch (interaction.commandName) {
     case "points":
       let user = interaction.options.getUser("user");
       if (!user) user = interaction.user;
-      const guild = interaction.guild;
       let points = await getPoints(guild, user.id);
       if (!points) points = 0;
       await interaction.reply({
@@ -125,6 +138,49 @@ client.on("interactionCreate", async (interaction) => {
         fetchReply: true,
       });
       break;
+    case "leaderboard":
+      await interaction.guild.members.fetch(); // cache update
+      let role = interaction.options.getRole("role");
+      if (!role) role = guild.roles.everyone;
+      const server = await readData(guild);
+      let roleMembers = [];
+      role.members.forEach((member) => {
+        const points = server[member.user.id];
+        const userId = member.user.tag; // TODO change to member.user.id
+        const tmp = {};
+        tmp[userId] = points;
+        if (points) roleMembers.push(tmp);
+      });
+
+      let leaderboard = roleMembers
+        .map(Object.entries)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      let output = "";
+      let prevRank;
+      let prevPoints;
+      for (let i = 0; i < leaderboard.length; i++) {
+        if (output) output += "\n";
+        const user = leaderboard[i][0][0];
+        const points = leaderboard[i][0][1];
+        let rank;
+        if (points === prevPoints) rank = prevRank;
+        else rank = i + 1;
+        output += `${rank}. ${user} (${points} point${
+          points === 1 ? "" : "s"
+        })`;
+        prevRank = rank;
+        prevPoints = points;
+      }
+
+      const embed = new MessageEmbed()
+        .setTitle(`${role.name} Leaderboard`)
+        .addField(`\u200b`, `${output}`);
+      await interaction.reply({
+        fetchReply: true,
+        embeds: [embed],
+      });
     default:
       break;
   }
