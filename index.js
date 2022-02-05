@@ -38,6 +38,11 @@ const commands = [
         description: "The role to show leaderboard",
         type: DiscordJS.Constants.ApplicationCommandOptionTypes.ROLE,
       },
+      {
+        name: "results",
+        description: "Number of results to show",
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+      },
     ],
   },
 ];
@@ -136,7 +141,8 @@ client.on("interactionCreate", async (interaction) => {
       let points = await getPoints(guild, user.id);
       if (!points) points = 0;
       await interaction.reply({
-        content: `${user.tag} has ${points} point${points === 1 ? "" : "s"}.`,
+        allowedMentions: { users: [] },
+        content: `${user} has ${points} point${points === 1 ? "" : "s"}.`,
         fetchReply: true,
       });
       break;
@@ -144,43 +150,72 @@ client.on("interactionCreate", async (interaction) => {
       await interaction.guild.members.fetch(); // cache update
       let role = interaction.options.getRole("role");
       if (!role) role = guild.roles.everyone;
+      let results = interaction.options.getNumber("results");
+      if (!results) results = 10;
+      else if (results < 1) results = 1;
+      else if (results > 25) results = 25;
       const server = await readData(guild);
       let roleMembers = [];
       role.members.forEach((member) => {
         if (member.user.bot) return;
         const points = server[member.user.id];
-        const userId = member.user.tag; // TODO change to member.user.id
+        const user = member.user;
         const tmp = {};
-        tmp[userId] = points;
+        tmp[user] = points;
         if (points) roleMembers.push(tmp);
       });
 
       let leaderboard = roleMembers
         .map(Object.entries)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
+        .slice(0, results);
 
-      let output = "";
+      let memberLeaderboard = "";
+      let pointsLeaderboard = "";
       let prevRank;
       let prevPoints;
       for (let i = 0; i < leaderboard.length; i++) {
-        if (output) output += "\n";
+        if (memberLeaderboard && pointsLeaderboard) {
+          memberLeaderboard += "\n";
+          pointsLeaderboard += "\n";
+        }
         const user = leaderboard[i][0][0];
         const points = leaderboard[i][0][1];
         let rank;
         if (points === prevPoints) rank = prevRank;
         else rank = i + 1;
-        output += `${rank}. ${user} (${points} point${
-          points === 1 ? "" : "s"
-        })`;
+        memberLeaderboard += `**${rank}.** ${user}`;
+        pointsLeaderboard += `${points}`;
         prevRank = rank;
         prevPoints = points;
       }
 
       const embed = new MessageEmbed()
-        .setTitle(`${role.name} Leaderboard`)
-        .addField(`\u200b`, `${output}`);
+        .setColor("#9346ff")
+        .setTitle(`Leaderboard`)
+        .setDescription(`Top ${results} results for ${role}`)
+        .setThumbnail(
+          "https://static-cdn.jtvnw.net/badges/v1/511b78a9-ab37-472f-9569-457753bbe7d3/3"
+        )
+        .addFields(
+          {
+            name: "Member",
+            value: `${memberLeaderboard}`,
+            inline: true,
+          },
+          {
+            name: "\u200b",
+            value: "\u200b",
+            inline: true,
+          },
+          {
+            name: "Points",
+            value: `${pointsLeaderboard}`,
+            inline: true,
+          }
+        );
       await interaction.reply({
+        allowedMentions: { users: [] },
         fetchReply: true,
         embeds: [embed],
       });
