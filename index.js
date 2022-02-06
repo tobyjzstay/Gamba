@@ -6,10 +6,17 @@
 
 const fs = require("fs");
 const DiscordJS = require("discord.js");
-const { Client, Intents, MessageEmbed } = require("discord.js");
+const {
+  Client,
+  Intents,
+  MessageEmbed,
+  MessageAttachment,
+  MessageActionRow,
+  MessageButton,
+} = require("discord.js");
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
-const { clientId, token } = require("./config.json");
+const { clientId, token, path } = require("./config.json");
 
 const client = new Client({
   intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS],
@@ -40,12 +47,24 @@ const commands = [
       {
         name: "results",
         description: "Number of results to show",
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
     ],
   },
   {
     name: "prediction",
+    description: "Show a prediction",
+    options: [
+      {
+        name: "id",
+        description: "ID of the prediction",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
+      },
+    ],
+  },
+  {
+    name: "create",
     description: "Create a new prediction",
     options: [
       {
@@ -69,17 +88,17 @@ const commands = [
       {
         name: "minutes",
         description: "Number of minutes users have to predict",
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
       {
         name: "hours",
         description: "Number of hours users have to predict",
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
       {
         name: "days",
         description: "Number of days users have to predict",
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
     ],
   },
@@ -91,19 +110,19 @@ const commands = [
         name: "id",
         description: "ID of the prediction",
         required: true,
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
       {
         name: "index",
         description: "Outcome index prediction",
         required: true,
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
       {
         name: "amount",
         description: "Number of points",
         required: true,
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.STRING,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
     ],
   },
@@ -115,13 +134,13 @@ const commands = [
         name: "id",
         description: "ID of the prediction",
         required: true,
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
       {
         name: "index",
         description: "Outcome index prediction",
         required: true,
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
     ],
   },
@@ -133,7 +152,7 @@ const commands = [
         name: "id",
         description: "ID of the prediction",
         required: true,
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.NUMBER,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
       },
     ],
   },
@@ -154,23 +173,40 @@ const commands = [
 })();
 
 async function initialiseGuild(guild) {
-  let server = {};
-  await guild.members
-    .fetch()
-    .then((members) =>
-      members.forEach((member) => (server[member.user.id] = 0))
+  if (!fs.existsSync(`${path.points}${guild.id}.json`)) {
+    let pointsData = {};
+    await guild.members
+      .fetch()
+      .then((members) =>
+        members.forEach((member) => (pointsData[member.user.id] = 0))
+      );
+
+    fs.writeFileSync(
+      `${path.points}${guild.id}.json`,
+      JSON.stringify(pointsData, null, 2),
+      "utf-8"
     );
-  fs.writeFileSync(
-    `data/${guild.id}.json`,
-    JSON.stringify(server, null, 2),
-    "utf-8"
-  );
+  }
+  if (!fs.existsSync(`${path.predictionsActive}${guild.id}.json`)) {
+    fs.writeFileSync(
+      `${path.predictionsActive}${guild.id}.json`,
+      "{}",
+      "utf-8"
+    );
+  }
+  if (!fs.existsSync(`${path.predictionsArchive}${guild.id}.json`)) {
+    fs.writeFileSync(
+      `${path.predictionsArchive}${guild.id}.json`,
+      "{}",
+      "utf-8"
+    );
+  }
 }
 
 async function getPoints(guild, userId) {
   try {
-    const server = await readData(guild);
-    return server[userId];
+    const pointsData = await readData(guild, path.points);
+    return pointsData[userId];
   } catch (err) {
     console.error(err);
     await initialiseGuild(guild);
@@ -178,9 +214,9 @@ async function getPoints(guild, userId) {
   }
 }
 
-async function readData(guild) {
+async function readData(guild, path) {
   return await JSON.parse(
-    fs.readFileSync(`data/${guild.id}.json`, "utf-8", (err) => {
+    fs.readFileSync(`${path}${guild.id}.json`, "utf-8", (err) => {
       console.error(err);
     })
   );
@@ -188,18 +224,18 @@ async function readData(guild) {
 
 async function addAllPoints(guild, increment) {
   try {
-    const server = await readData(guild);
+    const pointsData = await readData(guild, path.points);
 
-    let updatedServer = {};
-    for (let user in server) {
+    let updatedPointsData = {};
+    for (let user in pointsData) {
       const isBot = (await client.users.fetch(user)).bot;
-      if (isBot) updatedServer[user] = 0;
-      else updatedServer[user] = server[user] + increment;
+      if (isBot) updatedPointsData[user] = 0;
+      else updatedPointsData[user] = pointsData[user] + increment;
     }
 
     fs.writeFileSync(
-      `data/${guild.id}.json`,
-      JSON.stringify(updatedServer, null, 2),
+      `${path.points}${guild.id}.json`,
+      JSON.stringify(updatedPointsData, null, 2),
       "utf-8"
     );
   } catch (err) {
@@ -222,6 +258,10 @@ client.on("guildCreate", async (guild) => {
 });
 
 client.on("interactionCreate", async (interaction) => {
+  if (interaction.isButton()) {
+    // TODO
+    console.log(interaction);
+  }
   if (!interaction.isCommand()) return;
   if (interaction.user.bot || !interaction.channel) return;
 
@@ -243,15 +283,21 @@ client.on("interactionCreate", async (interaction) => {
       await interaction.guild.members.fetch(); // cache update
       let role = interaction.options.getRole("role");
       if (!role) role = guild.roles.everyone;
-      let results = interaction.options.getNumber("results");
+      let results = interaction.options.getInteger("results");
       if (!results) results = 10;
-      else if (results < 1) results = 1;
-      else if (results > 25) results = 25;
-      const server = await readData(guild);
+      else if (results < 1 || results > 25) {
+        interaction.reply({
+          content:
+            "Invalid input for **results**. Enter a number between **1** and **25**.",
+          ephemeral: true,
+        });
+        break;
+      }
+      const pointsData = await readData(guild.points);
       let roleMembers = [];
       role.members.forEach((member) => {
         if (member.user.bot) return;
-        const points = server[member.user.id];
+        const points = pointsData[member.user.id];
         const user = member.user;
         const tmp = {};
         tmp[user] = points;
@@ -283,13 +329,12 @@ client.on("interactionCreate", async (interaction) => {
         prevPoints = points;
       }
 
+      const attachment = new MessageAttachment("./images/founder.png");
       const embed = new MessageEmbed()
         .setColor("#9346ff")
         .setTitle(`Leaderboard`)
         .setDescription(`Top ${results} results for ${role}`)
-        .setThumbnail(
-          "https://static-cdn.jtvnw.net/badges/v1/511b78a9-ab37-472f-9569-457753bbe7d3/3"
-        )
+        .setThumbnail("attachment://founder.png")
         .addFields(
           {
             name: "\u1CBC\u1CBCUser",
@@ -307,14 +352,169 @@ client.on("interactionCreate", async (interaction) => {
             inline: true,
           }
         );
+
       await interaction.reply({
         allowedMentions: { users: [] },
         fetchReply: true,
         embeds: [embed],
+        files: [attachment],
       });
+      break;
+    case "prediction":
+      const option1Image = new MessageAttachment("./images/option1.png");
+      const option2Image = new MessageAttachment("./images/option2.png");
+      const row = new MessageActionRow().addComponents(
+        new MessageButton()
+          .setDisabled(true)
+          .setCustomId("option1")
+          .setLabel('Bet "Yes"')
+          .setStyle("PRIMARY"),
+        new MessageButton()
+          .setDisabled(true)
+          .setCustomId("option2")
+          .setLabel('Bet "No"')
+          .setStyle("SECONDARY"),
+        new MessageButton()
+          .setDisabled(true)
+          .setCustomId("closeEnd")
+          .setLabel("Close")
+          .setStyle("SUCCESS"),
+        new MessageButton()
+          .setDisabled(true)
+          .setCustomId("delete")
+          .setLabel("Delete")
+          .setStyle("DANGER")
+      );
+
+      const embedTitle = new MessageEmbed()
+        .setColor("#404040")
+        .setTitle(`Will TSM beat CLG?`)
+        .setDescription(`7:13 left to predict/Predictions closed`)
+        .setAuthor({
+          name: `${interaction.user.tag}`,
+          iconURL: `${interaction.user.displayAvatarURL()}`,
+        });
+      const embed1 = new MessageEmbed()
+        .setColor("#387aff")
+        .setTitle(`Yes (51%)`)
+        .setThumbnail("attachment://option1.png")
+        .addFields(
+          {
+            name: "\u200b",
+            value: `:yellow_circle: **Total Points:** 12.6M\n:trophy: **Return Ratio:** 1:69\n:family_man_girl: **Total Voters:** 2.5K\n:medal: ${interaction.user} 250K`,
+            inline: true,
+          },
+          {
+            name: "\u200b",
+            value: "\u200b",
+            inline: true,
+          }
+        );
+      const embed2 = new MessageEmbed()
+        .setColor("#f5009b")
+        .setTitle(`No (49%)`)
+        .setThumbnail("attachment://option2.png")
+        .addFields(
+          {
+            name: "\u200b",
+            value: `:yellow_circle: **Total Points:** 12.6M\n:trophy: **Return Ratio:** 1:69\n:family_man_girl: **Total Voters:** 2.5K\n:medal: ${interaction.user} 250K`,
+            inline: true,
+          },
+          {
+            name: "\u200b",
+            value: "\u200b",
+            inline: true,
+          }
+        );
+
+      await interaction.reply({
+        allowedMentions: { users: [] },
+        fetchReply: true,
+        embeds: [embedTitle, embed1, embed2],
+        files: [option1Image, option2Image],
+        components: [row],
+      });
+    case "create":
+      const name = interaction.options.getString("name");
+      const option1 = interaction.options.getString("option1");
+      const option2 = interaction.options.getString("option2");
+      let minutes = interaction.options.getInteger("minutes");
+      let hours = interaction.options.getInteger("hours");
+      let days = interaction.options.getInteger("days");
+      if (minutes === null) minutes = 0;
+      if (hours === null) hours = 0;
+      if (days === null) days = 0;
+
+      let message;
+      if (minutes < 0 || minutes > 59)
+        message =
+          "Invalid input for **minutes**. Enter an integer between **0** and **59**.";
+      else if (hours < 0 || hours > 23)
+        message =
+          "Invalid input for **hours**. Enter an integer between **0** and **23**.";
+      else if (days < 0 || days > 365)
+        message =
+          "Invalid input for **days**. Enter an integer between **0** and **365**.";
+      else if (minutes === 0 && hours === 0 && days === 0) minutes = 5;
+
+      if (message) {
+        interaction.reply({
+          content: message,
+          ephemeral: true,
+        });
+        break;
+      }
+
+      const prediction = {
+        name: name,
+        author: interaction.user.id,
+        created: new Date(),
+        duration: {
+          minutes: minutes,
+          hours: hours,
+          days: days,
+        },
+        closed: false,
+        options: [
+          {
+            option: option1,
+            voters: {},
+          },
+          {
+            option: option2,
+            voters: {},
+          },
+        ],
+      };
+
+      await addPrediction(guild, prediction);
     default:
       break;
   }
 });
+
+async function addPrediction(guild, prediction) {
+  try {
+    const predictionsActiveData = await readData(guild, path.predictionsActive);
+
+    let updatedPredictionsActiveData = predictionsActiveData;
+    for (let i = 1; true; i++) {
+      if (!updatedPredictionsActiveData[i]) {
+        updatedPredictionsActiveData[i] = prediction;
+        break;
+      }
+    }
+
+    fs.writeFileSync(
+      `${path.predictionsActive}${guild.id}.json`,
+      JSON.stringify(updatedPredictionsActiveData, null, 2),
+      "utf-8"
+    );
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return addPrediction(guild);
+  }
+}
 
 client.login(token);
