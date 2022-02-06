@@ -229,14 +229,16 @@ async function readData(guild, path) {
 async function addAllPoints(guild, increment) {
   try {
     const pointsData = await readData(guild, path.points);
-
     let updatedPointsData = {};
-    for (let user in pointsData) {
-      const isBot = (await client.users.fetch(user)).bot;
+
+    await guild.members.fetch(); // cache update
+    guild.roles.everyone.members.forEach((member) => {
       // don't add points to bots
-      if (isBot) continue;
-      else updatedPointsData[user] = pointsData[user] + increment;
-    }
+      if (member.user.bot) updatedPointsData[member.user.id] = 0;
+      else
+        updatedPointsData[member.user.id] =
+          pointsData[member.user.id] + increment;
+    });
 
     fs.writeFileSync(
       `${path.points}${guild.id}.json`,
@@ -306,17 +308,21 @@ client.on("interactionCreate", async (interaction) => {
           predictionNames += "\n";
         }
         const prediction = predictions[i][1];
-        predictionIds += `#${predictions[i][0]}`;
-        predictionMembers += `${await interaction.guild.members.fetch(
-          prediction.author
-        )}`;
-        predictionNames += `${prediction.name}`;
+        predictionIds += prediction.closed
+          ? `~~#${predictions[i][0]}~~`
+          : `#${predictions[i][0]}`;
+        predictionMembers += prediction.closed
+          ? `~~${await interaction.guild.members.fetch(prediction.author)}~~`
+          : `${await interaction.guild.members.fetch(prediction.author)}`;
+        predictionNames += prediction.closed
+          ? `~~${prediction.name}~~`
+          : `${prediction.name}`;
       }
       const embedGamba = new MessageEmbed()
         .setColor("#9346ff")
         .setTitle(`Active Predictions`)
         .setDescription(
-          "Get more details about each prediction using `/prediction`"
+          "Get more details about each prediction using `/prediction`\nPredictions with a ~~strikethrough~~ are closed."
         )
         .setThumbnail("attachment://icon.png")
         .addFields(
@@ -336,7 +342,7 @@ client.on("interactionCreate", async (interaction) => {
             inline: true,
           }
         )
-        .addField("\u200b", "Or, create your own prediction using `/create`");
+        .addField("\u200b", "Create your own prediction using `/create`");
       await interaction.reply({
         embeds: [embedGamba],
         fetchReply: true,
@@ -371,7 +377,7 @@ client.on("interactionCreate", async (interaction) => {
       const pointsData = await readData(guild, path.points);
       let roleMembers = {};
       role.members.forEach((member) => {
-        // if (member.user.bot) return; // hide bots from leaderboard
+        if (member.user.bot) return; // hide bots from leaderboard
         const points = pointsData[member.user.id];
         const user = member.user;
         roleMembers[user] = points;
@@ -475,26 +481,79 @@ client.on("interactionCreate", async (interaction) => {
           .setStyle("DANGER")
       );
 
+      const closes1 = new Date(prediction.closes);
+
       const member = await interaction.guild.members.fetch(prediction.author); // cache update
       const embedTitle = new MessageEmbed()
         .setColor("#404040")
         .setTitle(`${prediction.name}`)
-        .setDescription(prediction.closed ? "Predictions closed" : ``)
+        .setDescription(
+          prediction.closed
+            ? "Predictions closed"
+            : `Prediction closes at ${closes1
+                .toLocaleTimeString("en-NZ")
+                .toUpperCase()}, ${closes1.toLocaleDateString("en-NZ")}`
+        )
         .setAuthor({
           name: `${member.user.tag}`,
           iconURL: `${member.user.displayAvatarURL()}`,
         });
+
+      const voters1 = prediction.options[0].voters;
+      const totalPoints1 = Object.entries(voters1).reduce(
+        (p, i) => p + i[1],
+        0
+      );
+
+      const topVoters1 = Object.entries(voters1)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 1);
+
+      const topVoter1 = topVoters1[0]
+        ? await interaction.guild.members.fetch(topVoters1[0][0])
+        : null;
+
+      const voters2 = prediction.options[1].voters;
+      const totalPoints2 = Object.entries(voters2).reduce(
+        (p, i) => p + i[1],
+        0
+      );
+
+      const topVoters2 = Object.entries(voters2)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 1);
+
+      const topVoter2 = topVoters2[0]
+        ? await interaction.guild.members.fetch(topVoters2[0][0])
+        : null;
+
+      const totalVoters1 = Object.keys(voters1).length;
+      const totalVoters2 = Object.keys(voters2).length;
       const embed1 = new MessageEmbed()
         .setColor("#387aff")
-        .setTitle(`${prediction.options[0].option} (51%)`)
+        .setTitle(
+          `${prediction.options[0].option}${
+            totalVoters1 + totalVoters2
+              ? ` (${Math.round(
+                  (totalPoints1 / (totalPoints1 + totalPoints2)) * 100
+                )}%)`
+              : ``
+          }`
+        )
         .setThumbnail("attachment://option1.png")
         .addFields(
           {
             name: "\u200b",
-            value: `:yellow_circle: **Total Points:** 12.6M
-            :trophy: **Return Ratio:** 1:69
-            :family_man_girl: **Total Voters:** 2.5K
-            :medal: ${interaction.user} 250K`,
+            value: `:yellow_circle: **Total Points:** ${totalPoints1}
+            :trophy: **Return Ratio:** 1:${
+              totalPoints2 / totalPoints1 < 1
+                ? Math.round((totalPoints2 / totalPoints1) * 100) / 100 + 1
+                : Math.round((totalPoints2 / totalPoints1) * 100) / 100
+            }
+            :family_man_girl: **Total Voters:** ${
+              Object.keys(prediction.options[0].voters).length
+            }
+            :medal: ${topVoter1 ? `${topVoter1}: ${topVoters1[0][1]}` : "-"}`,
             inline: true,
           },
           {
@@ -505,15 +564,29 @@ client.on("interactionCreate", async (interaction) => {
         );
       const embed2 = new MessageEmbed()
         .setColor("#f5009b")
-        .setTitle(`${prediction.options[1].option} (49%)`)
+        .setTitle(
+          `${prediction.options[1].option}${
+            totalVoters1 + totalVoters2
+              ? ` (${Math.round(
+                  (totalPoints2 / (totalPoints1 + totalPoints2)) * 100
+                )}%)`
+              : ``
+          }`
+        )
         .setThumbnail("attachment://option2.png")
         .addFields(
           {
             name: "\u200b",
-            value: `:yellow_circle: **Total Points:** 12.6M
-            :trophy: **Return Ratio:** 1:69
-            :family_man_girl: **Total Voters:** 2.5K
-            :medal: ${interaction.user} 250K`,
+            value: `:yellow_circle: **Total Points:** ${totalPoints2}
+            :trophy: **Return Ratio:** 1:${
+              totalPoints1 / totalPoints2 < 1
+                ? Math.round((totalPoints1 / totalPoints2) * 100) / 100 + 1
+                : Math.round((totalPoints1 / totalPoints2) * 100) / 100
+            }
+            :family_man_girl: **Total Voters:** ${
+              Object.keys(prediction.options[1].voters).length
+            }
+            :medal: ${topVoter2 ? `${topVoter2}: ${topVoters2[0][1]}` : "-"}`,
             inline: true,
           },
           {
@@ -530,6 +603,7 @@ client.on("interactionCreate", async (interaction) => {
         files: [option1Image, option2Image],
         components: [row],
       });
+      break;
     case "create":
       const name = interaction.options.getString("name");
       const option1 = interaction.options.getString("option1");
@@ -561,15 +635,17 @@ client.on("interactionCreate", async (interaction) => {
         break;
       }
 
+      const created = new Date();
+      let closes = created;
+      closes.setDate(closes.getMinutes() + minutes);
+      closes.setDate(closes.getHours() + hours);
+      closes.setDate(closes.getDate() + days);
+
       const newPrediction = {
         name: name,
         author: interaction.user.id,
-        created: new Date(),
-        duration: {
-          minutes: minutes,
-          hours: hours,
-          days: days,
-        },
+        created: created,
+        closes: closes,
         closed: false,
         options: [
           {
@@ -584,6 +660,7 @@ client.on("interactionCreate", async (interaction) => {
       };
 
       await addPrediction(guild, newPrediction);
+      break;
     default:
       break;
   }
