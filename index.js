@@ -74,13 +74,13 @@ const commands = [
         type: DiscordJS.Constants.ApplicationCommandOptionTypes.STRING,
       },
       {
-        name: "outcome1",
+        name: "option1",
         description: "First possible outcome",
         required: true,
         type: DiscordJS.Constants.ApplicationCommandOptionTypes.STRING,
       },
       {
-        name: "outcome2",
+        name: "option2",
         description: "Second possible outcome",
         required: true,
         type: DiscordJS.Constants.ApplicationCommandOptionTypes.STRING,
@@ -156,6 +156,10 @@ const commands = [
       },
     ],
   },
+  {
+    name: "gamba",
+    description: "Lists all active predictions",
+  },
 ];
 
 (async () => {
@@ -229,7 +233,8 @@ async function addAllPoints(guild, increment) {
     let updatedPointsData = {};
     for (let user in pointsData) {
       const isBot = (await client.users.fetch(user)).bot;
-      if (isBot) updatedPointsData[user] = 0;
+      // don't add points to bots
+      if (isBot) continue;
       else updatedPointsData[user] = pointsData[user] + increment;
     }
 
@@ -246,6 +251,7 @@ async function addAllPoints(guild, increment) {
 }
 
 client.on("ready", () => {
+  client.user.setActivity("/gamba", { type: "LISTENING" });
   setInterval(() => {
     client.guilds.cache.forEach(async (guild) => {
       await addAllPoints(guild, 10);
@@ -268,6 +274,75 @@ client.on("interactionCreate", async (interaction) => {
   const guild = interaction.guild;
 
   switch (interaction.commandName) {
+    case "gamba":
+      const predictionData = await getPredictions(guild);
+      let predictions = Object.entries(predictionData)
+        .sort((a, b) => a[0] - b[0])
+        .slice(0, 25); // TODO expandable?
+
+      const icon = new MessageAttachment("./images/icon.png");
+      if (Object.keys(predictions).length === 0) {
+        const embedGamba = new MessageEmbed()
+          .setColor("#9346ff")
+          .setTitle(`Active Predictions`)
+          .setDescription("There are currently no active predictions.")
+          .setThumbnail("attachment://icon.png")
+          .addField("\u200b", "Create your own prediction using `/create`");
+        await interaction.reply({
+          embeds: [embedGamba],
+          fetchReply: true,
+          files: [icon],
+        });
+        break;
+      }
+
+      let predictionIds = "";
+      let predictionMembers = "";
+      let predictionNames = "";
+      for (let i = 0; i < predictions.length; i++) {
+        if (predictionIds && predictionMembers && predictionNames) {
+          predictionIds += "\n";
+          predictionMembers += "\n";
+          predictionNames += "\n";
+        }
+        const prediction = predictions[i][1];
+        predictionIds += `#${predictions[i][0]}`;
+        predictionMembers += `${await interaction.guild.members.fetch(
+          prediction.author
+        )}`;
+        predictionNames += `${prediction.name}`;
+      }
+      const embedGamba = new MessageEmbed()
+        .setColor("#9346ff")
+        .setTitle(`Active Predictions`)
+        .setDescription(
+          "Get more details about each prediction using `/prediction`"
+        )
+        .setThumbnail("attachment://icon.png")
+        .addFields(
+          {
+            name: "ID",
+            value: `${predictionIds}`,
+            inline: true,
+          },
+          {
+            name: "Member",
+            value: `${predictionMembers}`,
+            inline: true,
+          },
+          {
+            name: "Prediction",
+            value: `${predictionNames}`,
+            inline: true,
+          }
+        )
+        .addField("\u200b", "Or, create your own prediction using `/create`");
+      await interaction.reply({
+        embeds: [embedGamba],
+        fetchReply: true,
+        files: [icon],
+      });
+      break;
     case "points":
       let user = interaction.options.getUser("user");
       if (!user) user = interaction.user;
@@ -293,19 +368,24 @@ client.on("interactionCreate", async (interaction) => {
         });
         break;
       }
-      const pointsData = await readData(guild.points);
-      let roleMembers = [];
+      const pointsData = await readData(guild, path.points);
+      let roleMembers = {};
       role.members.forEach((member) => {
-        if (member.user.bot) return;
+        // if (member.user.bot) return; // hide bots from leaderboard
         const points = pointsData[member.user.id];
         const user = member.user;
-        const tmp = {};
-        tmp[user] = points;
-        if (points) roleMembers.push(tmp);
+        roleMembers[user] = points;
       });
+      if (Object.keys(roleMembers).length === 0) {
+        interaction.reply({
+          content: `Could not find any users for ${role}`,
+          ephemeral: true,
+        });
+        break;
+      }
 
-      let leaderboard = roleMembers
-        .map(Object.entries)
+      // TODO sort by username as well?
+      let leaderboard = Object.entries(roleMembers)
         .sort((a, b) => b[1] - a[1])
         .slice(0, results);
 
@@ -318,8 +398,8 @@ client.on("interactionCreate", async (interaction) => {
           userLeaderboard += "\n";
           pointsLeaderboard += "\n";
         }
-        const user = leaderboard[i][0][0];
-        const points = leaderboard[i][0][1];
+        const user = leaderboard[i][0];
+        const points = leaderboard[i][1];
         let rank;
         if (points === prevPoints) rank = prevRank;
         else rank = i + 1;
@@ -361,47 +441,60 @@ client.on("interactionCreate", async (interaction) => {
       });
       break;
     case "prediction":
+      const id = interaction.options.getInteger("id");
+      const prediction = await getPrediction(guild, id);
+      if (!prediction) {
+        interaction.reply({
+          content:
+            "Invalid input for **id**. The prediction could not be found. Use `/list` to list all the active predictions.",
+          ephemeral: true,
+        });
+        break;
+      }
+
       const option1Image = new MessageAttachment("./images/option1.png");
       const option2Image = new MessageAttachment("./images/option2.png");
       const row = new MessageActionRow().addComponents(
         new MessageButton()
-          .setDisabled(true)
+          .setDisabled(prediction.closed)
           .setCustomId("option1")
-          .setLabel('Bet "Yes"')
+          .setLabel(`Bet "${prediction.options[0].option}"`)
           .setStyle("PRIMARY"),
         new MessageButton()
-          .setDisabled(true)
+          .setDisabled(prediction.closed)
           .setCustomId("option2")
-          .setLabel('Bet "No"')
+          .setLabel(`Bet "${prediction.options[1].option}"`)
           .setStyle("SECONDARY"),
         new MessageButton()
-          .setDisabled(true)
           .setCustomId("closeEnd")
-          .setLabel("Close")
+          .setLabel(prediction.closed ? "End" : "Close")
           .setStyle("SUCCESS"),
         new MessageButton()
-          .setDisabled(true)
           .setCustomId("delete")
           .setLabel("Delete")
           .setStyle("DANGER")
       );
 
+      const member = await interaction.guild.members.fetch(prediction.author); // cache update
       const embedTitle = new MessageEmbed()
         .setColor("#404040")
-        .setTitle(`Will TSM beat CLG?`)
-        .setDescription(`7:13 left to predict/Predictions closed`)
+        .setTitle(`${prediction.name}`)
+        .setDescription(prediction.closed ? "Predictions closed" : ``)
         .setAuthor({
-          name: `${interaction.user.tag}`,
-          iconURL: `${interaction.user.displayAvatarURL()}`,
+          name: `${member.user.tag}`,
+          iconURL: `${member.user.displayAvatarURL()}`,
         });
       const embed1 = new MessageEmbed()
         .setColor("#387aff")
-        .setTitle(`Yes (51%)`)
+        .setTitle(`${prediction.options[0].option} (51%)`)
         .setThumbnail("attachment://option1.png")
         .addFields(
           {
             name: "\u200b",
-            value: `:yellow_circle: **Total Points:** 12.6M\n:trophy: **Return Ratio:** 1:69\n:family_man_girl: **Total Voters:** 2.5K\n:medal: ${interaction.user} 250K`,
+            value: `:yellow_circle: **Total Points:** 12.6M
+            :trophy: **Return Ratio:** 1:69
+            :family_man_girl: **Total Voters:** 2.5K
+            :medal: ${interaction.user} 250K`,
             inline: true,
           },
           {
@@ -412,12 +505,15 @@ client.on("interactionCreate", async (interaction) => {
         );
       const embed2 = new MessageEmbed()
         .setColor("#f5009b")
-        .setTitle(`No (49%)`)
+        .setTitle(`${prediction.options[1].option} (49%)`)
         .setThumbnail("attachment://option2.png")
         .addFields(
           {
             name: "\u200b",
-            value: `:yellow_circle: **Total Points:** 12.6M\n:trophy: **Return Ratio:** 1:69\n:family_man_girl: **Total Voters:** 2.5K\n:medal: ${interaction.user} 250K`,
+            value: `:yellow_circle: **Total Points:** 12.6M
+            :trophy: **Return Ratio:** 1:69
+            :family_man_girl: **Total Voters:** 2.5K
+            :medal: ${interaction.user} 250K`,
             inline: true,
           },
           {
@@ -465,7 +561,7 @@ client.on("interactionCreate", async (interaction) => {
         break;
       }
 
-      const prediction = {
+      const newPrediction = {
         name: name,
         author: interaction.user.id,
         created: new Date(),
@@ -487,11 +583,33 @@ client.on("interactionCreate", async (interaction) => {
         ],
       };
 
-      await addPrediction(guild, prediction);
+      await addPrediction(guild, newPrediction);
     default:
       break;
   }
 });
+
+async function getPrediction(guild, id) {
+  try {
+    const predictionsActiveData = await readData(guild, path.predictionsActive);
+    return predictionsActiveData[id];
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return getPrediction(guild, id);
+  }
+}
+
+async function getPredictions(guild) {
+  try {
+    const predictionsActiveData = await readData(guild, path.predictionsActive);
+    return predictionsActiveData;
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return getPredictions(guild);
+  }
+}
 
 async function addPrediction(guild, prediction) {
   try {
@@ -510,6 +628,8 @@ async function addPrediction(guild, prediction) {
       JSON.stringify(updatedPredictionsActiveData, null, 2),
       "utf-8"
     );
+
+    // TODO call showing the prediction
   } catch (err) {
     console.error(err);
     await initialiseGuild(guild);
