@@ -616,7 +616,16 @@ client.on("interactionCreate", async (interaction) => {
       if (days === null) days = 0;
 
       let message;
-      if (minutes < 0 || minutes > 59)
+      if (name.length > 100) {
+        message =
+          "Invalid input for **name**. Must be 100 characters or fewer in length.";
+      } else if (option1.length > 32) {
+        message =
+          "Invalid input for **option1**. Must be 32 characters or fewer in length.";
+      } else if (option2.length > 32) {
+        message =
+          "Invalid input for **option2**. Must be 32 characters or fewer in length.";
+      } else if (minutes < 0 || minutes > 59)
         message =
           "Invalid input for **minutes**. Enter an integer between **0** and **59**.";
       else if (hours < 0 || hours > 23)
