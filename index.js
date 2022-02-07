@@ -452,7 +452,7 @@ client.on("interactionCreate", async (interaction) => {
       if (!prediction) {
         interaction.reply({
           content:
-            "Invalid input for **id**. The prediction could not be found. Use `/list` to list all the active predictions.",
+            "Invalid input for **id**. The prediction could not be found. Use `/gamba` to list all the active predictions.",
           ephemeral: true,
         });
         break;
@@ -464,12 +464,12 @@ client.on("interactionCreate", async (interaction) => {
         new MessageButton()
           .setDisabled(prediction.closed)
           .setCustomId("option1")
-          .setLabel(`Bet "${prediction.options[0].option}"`)
+          .setLabel(`Predict "${prediction.options[0].option}"`)
           .setStyle("PRIMARY"),
         new MessageButton()
           .setDisabled(prediction.closed)
           .setCustomId("option2")
-          .setLabel(`Bet "${prediction.options[1].option}"`)
+          .setLabel(`Predict "${prediction.options[1].option}"`)
           .setStyle("SECONDARY"),
         new MessageButton()
           .setCustomId("closeEnd")
@@ -669,6 +669,31 @@ client.on("interactionCreate", async (interaction) => {
       };
 
       await addPrediction(guild, newPrediction);
+      break;
+    case "predict":
+      const id2 = interaction.options.getInteger("id");
+      const index = interaction.options.getInteger("index");
+      const amount = interaction.options.getInteger("amount");
+      const prediction2 = await getPrediction(guild, id2);
+      const points2 = await getPoints(guild, interaction.user.id);
+
+      let message2;
+      if (!prediction2) {
+        message2 =
+          "Invalid input for **id**. The prediction could not be found. Use `/gamba` to list all the active predictions.";
+      } else if (index <= 0 || index > prediction2.options.length) {
+        message2 = `Invalid input for **index**. Enter an integer between **1** and **${prediction2.options.length}**.`;
+      } else if (amount <= 0 || amount > points2) {
+        message2 = `Invalid input for **amount**. Enter an integer between **1** and **${points2}**.`;
+      }
+
+      if (message2) {
+        interaction.reply({
+          content: message2,
+          ephemeral: true,
+        });
+        break;
+      }
       break;
     default:
       break;
