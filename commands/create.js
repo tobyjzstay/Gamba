@@ -4,6 +4,7 @@
  * @author Toby Stayner <toby@swengineer.dev>
  */
 
+const fs = require("fs");
 const { path } = require("../config.json");
 const { readData, initialiseGuild } = require("../helper");
 

@@ -23,18 +23,20 @@ module.exports = async function (interaction) {
   } else if (amount <= 0 || amount > points) {
     message = `Invalid input for **amount**. Enter an integer between **1** and **${points}**.`;
   } else if (prediction.closed) {
-    message = `Prediction ID **#${id}** is closed.`;
-  }
-
-  for (let option in prediction.options) {
-    const name = prediction.options[option].option;
-    const voters = prediction.options[option].voters;
-    const opt = new Number(option) + 1;
-    if (voters[interaction.user.id] && opt !== index) {
-      message = `You have already predicted "${name}" (**${opt}**) for **${
-        voters[interaction.user.id]
-      }** points.`;
-      break;
+    message = `The prediction **#${id}** is closed.`;
+  } else if (points < 1) {
+    message = `You don't have any points to predict with.`;
+  } else {
+    for (let option in prediction.options) {
+      const name = prediction.options[option].option;
+      const voters = prediction.options[option].voters;
+      const opt = new Number(option) + 1;
+      if (voters[interaction.user.id] && opt !== index) {
+        message = `You have already predicted "${name}" (**${opt}**) for **${
+          voters[interaction.user.id]
+        }** points.`;
+        break;
+      }
     }
   }
 
