@@ -4,12 +4,11 @@
  * @author Toby Stayner <toby@swengineer.dev>
  */
 
-const fs = require("fs");
 const { Client, Intents } = require("discord.js");
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
-const { clientId, token, path } = require("./config.json");
-const { readData, initialiseGuild, addAllPoints } = require("./helper");
+const { clientId, token } = require("./config.json");
+const { initialiseGuild, addAllPoints } = require("./helper");
 const schema = require("./schema");
 
 const commands = {};
