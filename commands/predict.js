@@ -68,11 +68,10 @@ module.exports = async function (interaction) {
   await interaction.reply({
     allowedMentions: { users: [] },
     content: `${interaction.user} has predicted "${
-      prediction.options[id - 1].option
+      prediction.options[index - 1].option
     }" (**${index}**) for **${amount}** point${
       amount === 1 ? "" : "s"
     } (**${predicted}** point${predicted === 1 ? "" : "s"} total).`,
-    ephemeral: true,
   });
 };
 

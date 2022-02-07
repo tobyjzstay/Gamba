@@ -33,7 +33,7 @@ module.exports = async function (interaction) {
   });
   if (Object.keys(roleMembers).length === 0) {
     interaction.reply({
-      content: `Could not find any users for ${role}`,
+      content: `Could not find any users for ${role}.`,
       ephemeral: true,
     });
     return;
