@@ -15,5 +15,6 @@ module.exports = async function (interaction) {
     allowedMentions: { users: [] },
     content: `${user} has ${points} point${points === 1 ? "" : "s"}.`,
     fetchReply: true,
+    ephemeral: true,
   });
 };

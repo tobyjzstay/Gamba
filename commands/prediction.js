@@ -19,7 +19,7 @@ module.exports = async function (interaction) {
   if (!prediction) {
     interaction.reply({
       content:
-        "Invalid input for **id**. The prediction could not be found. Use `/gamba` to list all the active predictions.",
+        (message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`),
       ephemeral: true,
     });
     return;
@@ -53,7 +53,7 @@ module.exports = async function (interaction) {
   const member = await interaction.guild.members.fetch(prediction.author);
   const embedTitle = new MessageEmbed()
     .setColor("#404040")
-    .setTitle(`${prediction.name}`)
+    .setTitle(`#${id}: ${prediction.name}`)
     .setDescription(
       prediction.closed
         ? "Predictions closed"

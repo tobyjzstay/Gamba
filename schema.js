@@ -8,6 +8,18 @@ const DiscordJS = require("discord.js");
 
 module.exports = [
   {
+    name: "close",
+    description: "Close a prediction",
+    options: [
+      {
+        name: "id",
+        description: "ID of the prediction",
+        required: true,
+        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
+      },
+    ],
+  },
+  {
     name: "create",
     description: "Create a new prediction",
     options: [

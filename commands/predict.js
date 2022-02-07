@@ -6,7 +6,7 @@
 
 const fs = require("fs");
 const { path } = require("../config.json");
-const { readData, initialiseGuild, getPoints } = require("../helper");
+const { readData, getPoints, getPrediction } = require("../helper");
 
 module.exports = async function (interaction) {
   const id = interaction.options.getInteger("id");
@@ -17,8 +17,7 @@ module.exports = async function (interaction) {
 
   let message;
   if (!prediction) {
-    message =
-      "Invalid input for **id**. The prediction could not be found. Use `/gamba` to list all the active predictions.";
+    message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`;
   } else if (index <= 0 || index > prediction.options.length) {
     message = `Invalid input for **index**. Enter an integer between **1** and **${prediction.options.length}**.`;
   } else if (amount <= 0 || amount > points) {
@@ -65,7 +64,8 @@ module.exports = async function (interaction) {
   );
 
   await interaction.reply({
-    content: `You have predicted "${
+    allowedMentions: { users: [] },
+    content: `${interaction.user} has predicted "${
       prediction.options[id - 1].option
     }" (**${index}**) for **${amount}** point${
       amount === 1 ? "" : "s"
@@ -73,17 +73,6 @@ module.exports = async function (interaction) {
     ephemeral: true,
   });
 };
-
-async function getPrediction(guild, id) {
-  try {
-    const predictionsActiveData = await readData(guild, path.predictionsActive);
-    return predictionsActiveData[id];
-  } catch (err) {
-    console.error(err);
-    await initialiseGuild(guild);
-    return getPrediction(guild, id);
-  }
-}
 
 async function setPoints(guild, userId, points) {
   const pointsData = await readData(guild, path.points);

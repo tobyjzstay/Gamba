@@ -7,7 +7,13 @@
 const fs = require("fs");
 const { path } = require("./config.json");
 
-module.exports = { readData, initialiseGuild, getPoints, addAllPoints };
+module.exports = {
+  readData,
+  initialiseGuild,
+  getPoints,
+  addAllPoints,
+  getPrediction,
+};
 
 async function readData(guild, path) {
   return await JSON.parse(
@@ -82,5 +88,16 @@ async function addAllPoints(guild, increment) {
     console.error(err);
     await initialiseGuild(guild);
     return addAllPoints(guild, increment);
+  }
+}
+
+async function getPrediction(guild, id) {
+  try {
+    const predictionsActiveData = await readData(guild, path.predictionsActive);
+    return predictionsActiveData[id];
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return getPrediction(guild, id);
   }
 }
