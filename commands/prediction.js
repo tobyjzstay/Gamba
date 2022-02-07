@@ -28,6 +28,6 @@ async function getPrediction(guild, id) {
   } catch (err) {
     console.error(err);
     await initialiseGuild(guild);
-    return getPrediction(guild, id);
+    return await getPrediction(guild, id);
   }
 }

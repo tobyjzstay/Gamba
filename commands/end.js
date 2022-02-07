@@ -4,9 +4,7 @@
  * @author Toby Stayner <toby@swengineer.dev>
  */
 
-const fs = require("fs");
-const { path } = require("../config.json");
-const { readData, initialiseGuild, getPrediction } = require("../helper");
+const { getPrediction, setAllPoints, archivePrediction } = require("../helper");
 
 module.exports = async function (interaction) {
   const id = interaction.options.getInteger("id");
@@ -57,58 +55,13 @@ module.exports = async function (interaction) {
   }
 
   // update the points
-  setAllPoints(interaction.guild, winnerVoters);
+  await setAllPoints(interaction.guild, winnerVoters);
 
   // archive the prediction
-  archivePrediction(interaction.guild, id);
+  await archivePrediction(interaction.guild, id);
 
   await interaction.reply({
     allowedMentions: { users: [] },
     content: `${interaction.user} ended the prediction **#${id}**.`,
   });
 };
-
-async function setAllPoints(guild, voters) {
-  if (!voters) return;
-  const pointsData = await readData(guild, path.points);
-  let updatedPointsData = pointsData;
-  for (let voter in voters) {
-    updatedPointsData[voter] += voters[voter];
-  }
-  fs.writeFileSync(
-    `${path.points}${guild.id}.json`,
-    JSON.stringify(updatedPointsData, null, 2),
-    "utf-8"
-  );
-}
-
-async function archivePrediction(guild, id) {
-  try {
-    const prediction = await getPrediction(guild, id);
-    const predictionsArchiveData = await readData(
-      guild,
-      path.predictionsArchive
-    );
-    let updatedPredictionsArchiveData = predictionsArchiveData;
-    updatedPredictionsArchiveData.push(prediction);
-
-    fs.writeFileSync(
-      `${path.predictionsArchive}${guild.id}.json`,
-      JSON.stringify(updatedPredictionsArchiveData, null, 2),
-      "utf-8"
-    );
-
-    const predictionsActiveData = await readData(guild, path.predictionsActive);
-    let updatedPredictionsActiveData = predictionsActiveData;
-    delete updatedPredictionsActiveData[id];
-    fs.writeFileSync(
-      `${path.predictionsActive}${guild.id}.json`,
-      JSON.stringify(updatedPredictionsActiveData, null, 2),
-      "utf-8"
-    );
-  } catch (err) {
-    console.error(err);
-    await initialiseGuild(guild);
-    return archivePrediction(guild, id);
-  }
-}

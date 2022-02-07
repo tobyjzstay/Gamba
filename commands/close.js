@@ -55,6 +55,6 @@ async function closePrediction(guild, id) {
   } catch (err) {
     console.error(err);
     await initialiseGuild(guild);
-    return closePrediction(guild, id);
+    return await closePrediction(guild, id);
   }
 }

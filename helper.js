@@ -20,6 +20,8 @@ module.exports = {
   addAllPoints,
   getPrediction,
   showPrediction,
+  setAllPoints,
+  archivePrediction,
 };
 
 async function readData(guild, path) {
@@ -68,7 +70,7 @@ async function getPoints(guild, userId) {
   } catch (err) {
     console.error(err);
     await initialiseGuild(guild);
-    return getPoints(guild, userId);
+    return await getPoints(guild, userId);
   }
 }
 
@@ -94,7 +96,7 @@ async function addAllPoints(guild, increment) {
   } catch (err) {
     console.error(err);
     await initialiseGuild(guild);
-    return addAllPoints(guild, increment);
+    return await addAllPoints(guild, increment);
   }
 }
 
@@ -105,7 +107,7 @@ async function getPrediction(guild, id) {
   } catch (err) {
     console.error(err);
     await initialiseGuild(guild);
-    return getPrediction(guild, id);
+    return await getPrediction(guild, id);
   }
 }
 
@@ -146,6 +148,9 @@ async function showPrediction(interaction, id) {
     .setAuthor({
       name: `${member.user.tag}`,
       iconURL: `${member.user.displayAvatarURL()}`,
+    })
+    .setFooter({
+      text: `${prediction.uuid}`,
     });
 
   const voters1 = prediction.options[0].voters;
@@ -246,4 +251,49 @@ async function showPrediction(interaction, id) {
     files: [option1Image, option2Image],
     // components: [row],
   });
+}
+
+async function setAllPoints(guild, voters) {
+  if (!voters) return;
+  const pointsData = await readData(guild, path.points);
+  let updatedPointsData = pointsData;
+  for (let voter in voters) {
+    updatedPointsData[voter] += voters[voter];
+  }
+  fs.writeFileSync(
+    `${path.points}${guild.id}.json`,
+    JSON.stringify(updatedPointsData, null, 2),
+    "utf-8"
+  );
+}
+
+async function archivePrediction(guild, id) {
+  try {
+    const prediction = await getPrediction(guild, id);
+    const predictionsArchiveData = await readData(
+      guild,
+      path.predictionsArchive
+    );
+    let updatedPredictionsArchiveData = predictionsArchiveData;
+    updatedPredictionsArchiveData.push(prediction);
+
+    fs.writeFileSync(
+      `${path.predictionsArchive}${guild.id}.json`,
+      JSON.stringify(updatedPredictionsArchiveData, null, 2),
+      "utf-8"
+    );
+
+    const predictionsActiveData = await readData(guild, path.predictionsActive);
+    let updatedPredictionsActiveData = predictionsActiveData;
+    delete updatedPredictionsActiveData[id];
+    fs.writeFileSync(
+      `${path.predictionsActive}${guild.id}.json`,
+      JSON.stringify(updatedPredictionsActiveData, null, 2),
+      "utf-8"
+    );
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return await archivePrediction(guild, id);
+  }
 }

@@ -6,6 +6,7 @@
 
 const fs = require("fs");
 const { path } = require("../config.json");
+const { v4: uuidv4 } = require("uuid");
 const { readData, initialiseGuild, showPrediction } = require("../helper");
 
 module.exports = async function (interaction) {
@@ -55,6 +56,7 @@ module.exports = async function (interaction) {
   closes.setDate(closes.getDate() + days);
 
   const newPrediction = {
+    uuid: uuidv4(),
     name: name,
     author: interaction.user.id,
     created: created,
@@ -102,6 +104,6 @@ async function addPrediction(interaction, prediction) {
   } catch (err) {
     console.error(err);
     await initialiseGuild(interaction.guild);
-    return addPrediction(interaction.guild);
+    return await addPrediction(interaction.guild);
   }
 }

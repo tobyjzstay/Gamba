@@ -89,6 +89,6 @@ async function getPredictions(guild) {
   } catch (err) {
     console.error(err);
     await initialiseGuild(guild);
-    return getPredictions(guild);
+    return await getPredictions(guild);
   }
 }
