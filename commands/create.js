@@ -30,16 +30,17 @@ module.exports = async function (interaction) {
   } else if (option2.length > 32) {
     message =
       "Invalid input for **option2**. Must be 32 characters or fewer in length.";
-  } else if (minutes < 0 || minutes > 59)
-    message =
-      "Invalid input for **minutes**. Enter an integer between **0** and **59**.";
-  else if (hours < 0 || hours > 23)
-    message =
-      "Invalid input for **hours**. Enter an integer between **0** and **23**.";
-  else if (days < 0 || days > 365)
-    message =
-      "Invalid input for **days**. Enter an integer between **0** and **365**.";
-  else if (minutes === 0 && hours === 0 && days === 0) minutes = 5;
+  }
+  // else if (minutes < 0 || minutes > 59)
+  //   message =
+  //     "Invalid input for **minutes**. Enter an integer between **0** and **59**.";
+  // else if (hours < 0 || hours > 23)
+  //   message =
+  //     "Invalid input for **hours**. Enter an integer between **0** and **23**.";
+  // else if (days < 0 || days > 365)
+  //   message =
+  //     "Invalid input for **days**. Enter an integer between **0** and **365**.";
+  // else if (minutes === 0 && hours === 0 && days === 0) minutes = 5;
 
   if (message) {
     interaction.reply({
@@ -50,17 +51,17 @@ module.exports = async function (interaction) {
   }
 
   const created = new Date();
-  let closes = created;
-  closes.setDate(closes.getMinutes() + minutes);
-  closes.setDate(closes.getHours() + hours);
-  closes.setDate(closes.getDate() + days);
+  // let closes = created;
+  // closes.setDate(closes.getMinutes() + minutes);
+  // closes.setDate(closes.getHours() + hours);
+  // closes.setDate(closes.getDate() + days);
 
   const newPrediction = {
     uuid: uuidv4(),
     name: name,
     author: interaction.user.id,
     created: created,
-    closes: closes,
+    // closes: closes,
     closed: false,
     options: [
       {

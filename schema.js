@@ -41,21 +41,21 @@ module.exports = [
         required: true,
         type: DiscordJS.Constants.ApplicationCommandOptionTypes.STRING,
       },
-      {
-        name: "minutes",
-        description: "Number of minutes users have to predict",
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
-      },
-      {
-        name: "hours",
-        description: "Number of hours users have to predict",
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
-      },
-      {
-        name: "days",
-        description: "Number of days users have to predict",
-        type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
-      },
+      // {
+      //   name: "minutes",
+      //   description: "Number of minutes users have to predict",
+      //   type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
+      // },
+      // {
+      //   name: "hours",
+      //   description: "Number of hours users have to predict",
+      //   type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
+      // },
+      // {
+      //   name: "days",
+      //   description: "Number of days users have to predict",
+      //   type: DiscordJS.Constants.ApplicationCommandOptionTypes.INTEGER,
+      // },
     ],
   },
   {
