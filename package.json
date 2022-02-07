@@ -21,6 +21,7 @@
     "@discordjs/rest": "^0.3.0",
     "discord-api-types": "^0.26.1",
     "discord.js": "^13.6.0",
-    "fs": "^0.0.1-security"
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
   }
 }
