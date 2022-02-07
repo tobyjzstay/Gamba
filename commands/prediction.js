@@ -50,7 +50,7 @@ module.exports = async function (interaction) {
 
   const closes1 = new Date(prediction.closes);
 
-  const member = await interaction.guild.members.fetch(prediction.author); // cache update
+  const member = await interaction.guild.members.fetch(prediction.author);
   const embedTitle = new MessageEmbed()
     .setColor("#404040")
     .setTitle(`${prediction.name}`)

@@ -4,8 +4,7 @@
  * @author Toby Stayner <toby@swengineer.dev>
  */
 
-const { path } = require("../config.json");
-const { readData, initialiseGuild } = require("../helper");
+const { getPoints } = require("../helper");
 
 module.exports = async function (interaction) {
   let user = interaction.options.getUser("user");
@@ -18,14 +17,3 @@ module.exports = async function (interaction) {
     fetchReply: true,
   });
 };
-
-async function getPoints(guild, userId) {
-  try {
-    const pointsData = await readData(guild, path.points);
-    return pointsData[userId];
-  } catch (err) {
-    console.error(err);
-    await initialiseGuild(guild);
-    return getPoints(guild, userId);
-  }
-}

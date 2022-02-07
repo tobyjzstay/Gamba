@@ -5,7 +5,9 @@
  */
 
 const fs = require("fs");
-module.exports = { readData, initialiseGuild, addAllPoints };
+const { path } = require("./config.json");
+
+module.exports = { readData, initialiseGuild, getPoints, addAllPoints };
 
 async function readData(guild, path) {
   return await JSON.parse(
@@ -43,6 +45,17 @@ async function initialiseGuild(guild) {
       "{}",
       "utf-8"
     );
+  }
+}
+
+async function getPoints(guild, userId) {
+  try {
+    const pointsData = await readData(guild, path.points);
+    return pointsData[userId];
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return getPoints(guild, userId);
   }
 }
 
