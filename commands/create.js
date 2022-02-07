@@ -6,7 +6,7 @@
 
 const fs = require("fs");
 const { path } = require("../config.json");
-const { readData, initialiseGuild } = require("../helper");
+const { readData, initialiseGuild, showPrediction } = require("../helper");
 
 module.exports = async function (interaction) {
   const name = interaction.options.getString("name");
@@ -72,31 +72,36 @@ module.exports = async function (interaction) {
     ],
   };
 
-  await addPrediction(interaction.guild, newPrediction);
+  await addPrediction(interaction, newPrediction);
 };
 
-async function addPrediction(guild, prediction) {
+async function addPrediction(interaction, prediction) {
   try {
-    const predictionsActiveData = await readData(guild, path.predictionsActive);
+    const predictionsActiveData = await readData(
+      interaction.guild,
+      path.predictionsActive
+    );
 
     let updatedPredictionsActiveData = predictionsActiveData;
+    let id;
     for (let i = 1; true; i++) {
       if (!updatedPredictionsActiveData[i]) {
-        updatedPredictionsActiveData[i] = prediction;
+        id = i;
+        updatedPredictionsActiveData[id] = prediction;
         break;
       }
     }
 
     fs.writeFileSync(
-      `${path.predictionsActive}${guild.id}.json`,
+      `${path.predictionsActive}${interaction.guild.id}.json`,
       JSON.stringify(updatedPredictionsActiveData, null, 2),
       "utf-8"
     );
 
-    // TODO call showing the prediction
+    await showPrediction(interaction, id);
   } catch (err) {
     console.error(err);
-    await initialiseGuild(guild);
-    return addPrediction(guild);
+    await initialiseGuild(interaction.guild);
+    return addPrediction(interaction.guild);
   }
 }

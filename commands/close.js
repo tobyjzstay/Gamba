@@ -43,12 +43,18 @@ module.exports = async function (interaction) {
 };
 
 async function closePrediction(guild, id) {
-  const predictionsActiveData = await readData(guild, path.predictionsActive);
-  let updatedPredictionsActiveData = predictionsActiveData;
-  updatedPredictionsActiveData[id].closed = true;
-  fs.writeFileSync(
-    `${path.predictionsActive}${guild.id}.json`,
-    JSON.stringify(updatedPredictionsActiveData, null, 2),
-    "utf-8"
-  );
+  try {
+    const predictionsActiveData = await readData(guild, path.predictionsActive);
+    let updatedPredictionsActiveData = predictionsActiveData;
+    updatedPredictionsActiveData[id].closed = true;
+    fs.writeFileSync(
+      `${path.predictionsActive}${guild.id}.json`,
+      JSON.stringify(updatedPredictionsActiveData, null, 2),
+      "utf-8"
+    );
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return closePrediction(guild, id);
+  }
 }

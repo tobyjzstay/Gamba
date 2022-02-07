@@ -26,7 +26,7 @@ module.exports = async function (interaction) {
   let roleMembers = {};
   role.members.forEach((member) => {
     if (member.user.bot) return; // hide bots from leaderboard
-    const points = pointsData[member.user.id];
+    let points = pointsData[member.user.id];
     if (!points) points = 0;
     const user = member.user;
     roleMembers[user] = points;

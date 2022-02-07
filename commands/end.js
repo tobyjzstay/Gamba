@@ -6,7 +6,7 @@
 
 const fs = require("fs");
 const { path } = require("../config.json");
-const { readData, getPrediction } = require("../helper");
+const { readData, initialiseGuild, getPrediction } = require("../helper");
 
 module.exports = async function (interaction) {
   const id = interaction.options.getInteger("id");
@@ -22,7 +22,7 @@ module.exports = async function (interaction) {
   ) {
     message = `You do not have permission. Only ${author} and server administrators can close the prediction **#${id}**.`;
   } else if (!prediction.closed) {
-    message = `The prediction **#${id}** needs to be closed first before ending.`;
+    message = `The prediction **#${id}** needs to be closed first before ending. Use \`/close\` to close the prediction.`;
   } else if (index <= 0 || index > prediction.options.length) {
     message = `Invalid input for **index**. Enter an integer between **1** and **${prediction.options.length}**.`;
   }
@@ -35,14 +35,14 @@ module.exports = async function (interaction) {
     return;
   }
 
-  const winnerVoters = prediction.options[id - 1].voters;
+  const winnerVoters = prediction.options[index - 1].voters;
   const totalPointsWon = Object.entries(winnerVoters).reduce(
     (p, i) => p + i[1],
     0
   );
   let totalPointsLost = 0;
   for (let i = 0; i < prediction.options; i++) {
-    if (i + 1 === id) continue;
+    if (i + 1 === index) continue;
     totalPointsLost += Object.entries(prediction.options[i].voters).reduce(
       (p, i) => p + i[1],
       0
@@ -56,7 +56,11 @@ module.exports = async function (interaction) {
     winnerVoters[winnerVoter] *= ratio;
   }
 
+  // update the points
   setAllPoints(interaction.guild, winnerVoters);
+
+  // archive the prediction
+  archivePrediction(interaction.guild, id);
 
   await interaction.reply({
     allowedMentions: { users: [] },
@@ -76,4 +80,35 @@ async function setAllPoints(guild, voters) {
     JSON.stringify(updatedPointsData, null, 2),
     "utf-8"
   );
+}
+
+async function archivePrediction(guild, id) {
+  try {
+    const prediction = await getPrediction(guild, id);
+    const predictionsArchiveData = await readData(
+      guild,
+      path.predictionsArchive
+    );
+    let updatedPredictionsArchiveData = predictionsArchiveData;
+    updatedPredictionsArchiveData.push(prediction);
+
+    fs.writeFileSync(
+      `${path.predictionsArchive}${guild.id}.json`,
+      JSON.stringify(updatedPredictionsArchiveData, null, 2),
+      "utf-8"
+    );
+
+    const predictionsActiveData = await readData(guild, path.predictionsActive);
+    let updatedPredictionsActiveData = predictionsActiveData;
+    delete updatedPredictionsActiveData[id];
+    fs.writeFileSync(
+      `${path.predictionsActive}${guild.id}.json`,
+      JSON.stringify(updatedPredictionsActiveData, null, 2),
+      "utf-8"
+    );
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return archivePrediction(guild, id);
+  }
 }
