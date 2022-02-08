@@ -65,6 +65,6 @@ Create or have an existing Discord account at [Discord](https://discord.com/).
 | `/end <id> <index>`                  | End a prediction             |
 | `/delete <id>`                       | Delete a prediction          |
 
-## Licence
+## License
 
-[MIT](/LICENCE)
+[MIT](/LICENSE)
