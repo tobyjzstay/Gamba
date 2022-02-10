@@ -22,6 +22,8 @@ module.exports = {
   showPrediction,
   setAllPoints,
   archivePrediction,
+  predictPoints,
+  formatNumber,
 };
 
 async function readData(guild, path) {
@@ -118,20 +120,20 @@ async function showPrediction(interaction, id) {
   const row = new MessageActionRow().addComponents(
     new MessageButton()
       .setDisabled(prediction.closed)
-      .setCustomId("option1")
+      .setCustomId(`${prediction.uuid}_${id}_1`)
       .setLabel(`Predict "${prediction.options[0].option}"`)
       .setStyle("PRIMARY"),
     new MessageButton()
       .setDisabled(prediction.closed)
-      .setCustomId("option2")
+      .setCustomId(`${prediction.uuid}_${id}_2`)
       .setLabel(`Predict "${prediction.options[1].option}"`)
       .setStyle("SECONDARY"),
     new MessageButton()
-      .setCustomId("closeEnd")
+      .setCustomId("closeEnd") // TODO
       .setLabel(prediction.closed ? "End" : "Close")
       .setStyle("SUCCESS"),
     new MessageButton()
-      .setCustomId("delete")
+      .setCustomId("delete") // TODO
       .setLabel("Delete")
       .setStyle("DANGER")
   );
@@ -192,7 +194,7 @@ async function showPrediction(interaction, id) {
     .addFields(
       {
         name: "\u200b",
-        value: `:yellow_circle: **Total Points:** ${totalPoints1}
+        value: `:yellow_circle: **Total Points:** ${formatNumber(totalPoints1)}
             :trophy: **Return Ratio:** 1:${
               totalPoints2 / totalPoints1 < 1
                 ? Math.round((totalPoints2 / totalPoints1) * 100) / 100 + 1
@@ -201,7 +203,11 @@ async function showPrediction(interaction, id) {
             :family_man_girl: **Total Voters:** ${
               Object.keys(prediction.options[0].voters).length
             }
-            :medal: ${topVoter1 ? `${topVoter1}: ${topVoters1[0][1]}` : "-"}`,
+            :medal: ${
+              topVoter1
+                ? `${topVoter1}: ${formatNumber(topVoters1[0][1])}`
+                : "-"
+            }`,
         inline: true,
       },
       {
@@ -225,7 +231,7 @@ async function showPrediction(interaction, id) {
     .addFields(
       {
         name: "\u200b",
-        value: `:yellow_circle: **Total Points:** ${totalPoints2}
+        value: `:yellow_circle: **Total Points:** ${formatNumber(totalPoints2)}
             :trophy: **Return Ratio:** 1:${
               totalPoints1 / totalPoints2 < 1
                 ? Math.round((totalPoints1 / totalPoints2) * 100) / 100 + 1
@@ -234,7 +240,11 @@ async function showPrediction(interaction, id) {
             :family_man_girl: **Total Voters:** ${
               Object.keys(prediction.options[1].voters).length
             }
-            :medal: ${topVoter2 ? `${topVoter2}: ${topVoters2[0][1]}` : "-"}`,
+            :medal: ${
+              topVoter2
+                ? `${topVoter2}: ${formatNumber(topVoters2[0][1])}`
+                : "-"
+            }`,
         inline: true,
       },
       {
@@ -249,7 +259,7 @@ async function showPrediction(interaction, id) {
     fetchReply: true,
     embeds: [embedTitle, embed1, embed2],
     files: [option1Image, option2Image],
-    // components: [row],
+    components: [row],
   });
 }
 
@@ -296,4 +306,96 @@ async function archivePrediction(guild, id) {
     await initialiseGuild(guild);
     return await archivePrediction(guild, id);
   }
+}
+
+async function predictPoints(interaction, prediction, id, index, amount) {
+  const points = await getPoints(interaction.guild, interaction.user.id);
+  let message;
+  if (!prediction) {
+    message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`;
+  } else if (index <= 0 || index > prediction.options.length) {
+    message = `Invalid input for **index**. Enter an integer between **1** and **${prediction.options.length}**.`;
+  } else if (amount <= 0 || amount > points) {
+    message = `You don't have enough points. You have **${formatNumber(
+      points
+    )}** point${points === 1 ? "" : "s"}.`;
+  } else if (prediction.closed) {
+    message = `The prediction **#${id}** is closed.`;
+  } else {
+    for (let option in prediction.options) {
+      const name = prediction.options[option].option;
+      const voters = prediction.options[option].voters;
+      const opt = new Number(option) + 1;
+      if (voters[interaction.user.id] && opt != index) {
+        message = `You have already predicted "${name}" (**${opt}**) for **${formatNumber(
+          voters[interaction.user.id]
+        )}** points.`;
+        break;
+      }
+    }
+  }
+
+  if (message) {
+    interaction.reply({
+      content: message,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // calculate new user prediction
+  let predicted = new Number(
+    prediction.options[index - 1].voters[interaction.user.id]
+  );
+  if (!predicted) predicted = 0;
+  predicted += amount;
+
+  // deduct points from user
+  setPoints(interaction.guild, interaction.user.id, points - amount);
+
+  // update user prediction
+  setUserPrediction(
+    interaction.guild,
+    interaction.user.id,
+    id,
+    index - 1,
+    predicted
+  );
+
+  await interaction.reply({
+    allowedMentions: { users: [] },
+    content: `${interaction.user} has predicted "${
+      prediction.options[index - 1].option
+    }" (**${index}**) for **${formatNumber(amount)}** point${
+      amount === 1 ? "" : "s"
+    } (**${formatNumber(predicted)}** point${
+      predicted === 1 ? "" : "s"
+    } total).`,
+  });
+}
+
+async function setPoints(guild, userId, points) {
+  const pointsData = await readData(guild, path.points);
+  let updatedPointsData = pointsData;
+  updatedPointsData[userId] = points;
+  fs.writeFileSync(
+    `${path.points}${guild.id}.json`,
+    JSON.stringify(updatedPointsData, null, 2),
+    "utf-8"
+  );
+}
+
+async function setUserPrediction(guild, userId, id, index, amount) {
+  const predictionsActiveData = await readData(guild, path.predictionsActive);
+  let updatedPredictionsActiveData = predictionsActiveData;
+  updatedPredictionsActiveData[id].options[index].voters[userId] = amount;
+  fs.writeFileSync(
+    `${path.predictionsActive}${guild.id}.json`,
+    JSON.stringify(updatedPredictionsActiveData, null, 2),
+    "utf-8"
+  );
+}
+
+function formatNumber(number) {
+  return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }

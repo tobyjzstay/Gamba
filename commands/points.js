@@ -4,7 +4,7 @@
  * @author Toby Stayner <toby@swengineer.dev>
  */
 
-const { getPoints } = require("../helper");
+const { getPoints, formatNumber } = require("../helper");
 
 module.exports = async function (interaction) {
   let user = interaction.options.getUser("user");
@@ -13,7 +13,9 @@ module.exports = async function (interaction) {
   if (!points) points = 0;
   await interaction.reply({
     allowedMentions: { users: [] },
-    content: `${user} has ${points} point${points === 1 ? "" : "s"}.`,
+    content: `${user} has **${formatNumber(points)}** point${
+      points === 1 ? "" : "s"
+    }.`,
     fetchReply: true,
     ephemeral: true,
   });

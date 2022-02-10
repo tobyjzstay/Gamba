@@ -6,7 +6,7 @@
 
 const { MessageEmbed, MessageAttachment } = require("discord.js");
 const { path } = require("../config.json");
-const { readData } = require("../helper");
+const { readData, formatNumber } = require("../helper");
 
 module.exports = async function (interaction) {
   await interaction.guild.members.fetch(); // cache update
@@ -59,7 +59,7 @@ module.exports = async function (interaction) {
     if (points === prevPoints) rank = prevRank;
     else rank = i + 1;
     userLeaderboard += `**${rank}. **${user}`;
-    pointsLeaderboard += `${points}`;
+    pointsLeaderboard += `${formatNumber(points)}`;
     prevRank = rank;
     prevPoints = points;
   }
