@@ -23,6 +23,9 @@ module.exports = {
   setAllPoints,
   archivePrediction,
   predictPoints,
+  setClosedPrediction,
+  endPrediction,
+  deletePrediction,
   formatNumber,
 };
 
@@ -129,11 +132,13 @@ async function showPrediction(interaction, id) {
       .setLabel(`Predict "${prediction.options[1].option}"`)
       .setStyle("SECONDARY"),
     new MessageButton()
-      .setCustomId("closeEnd") // TODO
+      .setCustomId(
+        `${prediction.uuid}_${id}_${prediction.closed ? "end" : "close"}`
+      )
       .setLabel(prediction.closed ? "End" : "Close")
       .setStyle("SUCCESS"),
     new MessageButton()
-      .setCustomId("delete") // TODO
+      .setCustomId(`${prediction.uuid}_${id}_delete`)
       .setLabel("Delete")
       .setStyle("DANGER")
   );
@@ -316,7 +321,7 @@ async function predictPoints(interaction, prediction, id, index, amount) {
   } else if (index <= 0 || index > prediction.options.length) {
     message = `Invalid input for **index**. Enter an integer between **1** and **${prediction.options.length}**.`;
   } else if (amount <= 0 || amount > points) {
-    message = `You don't have enough points. You have **${formatNumber(
+    message = `Invalid input for **amount**. You have **${formatNumber(
       points
     )}** point${points === 1 ? "" : "s"}.`;
   } else if (prediction.closed) {
@@ -347,14 +352,14 @@ async function predictPoints(interaction, prediction, id, index, amount) {
   let predicted = new Number(
     prediction.options[index - 1].voters[interaction.user.id]
   );
-  if (!predicted) predicted = 0;
+  if (isNaN(predicted)) predicted = 0;
   predicted += amount;
 
   // deduct points from user
-  setPoints(interaction.guild, interaction.user.id, points - amount);
+  await setPoints(interaction.guild, interaction.user.id, points - amount);
 
   // update user prediction
-  setUserPrediction(
+  await setUserPrediction(
     interaction.guild,
     interaction.user.id,
     id,
@@ -364,7 +369,7 @@ async function predictPoints(interaction, prediction, id, index, amount) {
 
   await interaction.reply({
     allowedMentions: { users: [] },
-    content: `${interaction.user} has predicted "${
+    content: `${interaction.user} has predicted **#${id}** "${
       prediction.options[index - 1].option
     }" (**${index}**) for **${formatNumber(amount)}** point${
       amount === 1 ? "" : "s"
@@ -394,6 +399,155 @@ async function setUserPrediction(guild, userId, id, index, amount) {
     JSON.stringify(updatedPredictionsActiveData, null, 2),
     "utf-8"
   );
+}
+
+async function setClosedPrediction(interaction, id) {
+  const prediction = await getPrediction(interaction.guild, id);
+  const author = await interaction.guild.members.fetch(prediction.author);
+
+  let message;
+  if (!prediction) {
+    message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`;
+  } else if (
+    prediction.author !== interaction.user &&
+    !interaction.member.permissions.has("ADMINISTRATOR")
+  ) {
+    message = `You do not have permission. Only ${author} and server administrators can close the prediction **#${id}**.`;
+  } else if (prediction.closed) {
+    message = `The prediction **#${id}** is already closed.`;
+  }
+
+  if (message) {
+    interaction.reply({
+      content: message,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await closePrediction(interaction.guild, id);
+
+  await interaction.reply({
+    allowedMentions: { users: [] },
+    content: `${interaction.user} closed the prediction **#${id}**.`,
+    ephemeral: true,
+  });
+}
+
+async function closePrediction(guild, id) {
+  try {
+    const predictionsActiveData = await readData(guild, path.predictionsActive);
+    let updatedPredictionsActiveData = predictionsActiveData;
+    updatedPredictionsActiveData[id].closed = true;
+    fs.writeFileSync(
+      `${path.predictionsActive}${guild.id}.json`,
+      JSON.stringify(updatedPredictionsActiveData, null, 2),
+      "utf-8"
+    );
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return await closePrediction(guild, id);
+  }
+}
+
+async function endPrediction(interaction, id, index) {
+  const prediction = await getPrediction(interaction.guild, id);
+
+  let message;
+  if (!prediction) {
+    message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`;
+  } else if (
+    prediction.author !== interaction.user &&
+    !interaction.member.permissions.has("ADMINISTRATOR")
+  ) {
+    message = `You do not have permission. Only ${author} and server administrators can close the prediction **#${id}**.`;
+  } else if (!prediction.closed) {
+    message = `The prediction **#${id}** needs to be closed first before ending. Use \`/close\` to close the prediction.`;
+  } else if (index <= 0 || index > prediction.options.length) {
+    message = `Invalid input for **index**. Enter an integer between **1** and **${prediction.options.length}**.`;
+  }
+
+  if (message) {
+    interaction.reply({
+      content: message,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const winnerVoters = prediction.options[index - 1].voters;
+  const totalPointsWon = Object.entries(winnerVoters).reduce(
+    (p, i) => p + i[1],
+    0
+  );
+  let totalPointsLost = 0;
+  for (let i = 0; i < prediction.options; i++) {
+    if (i + 1 === index) continue;
+    totalPointsLost += Object.entries(prediction.options[i].voters).reduce(
+      (p, i) => p + i[1],
+      0
+    );
+  }
+
+  let ratio = totalPointsLost / totalPointsWon;
+  if (ratio < 1) ratio += 1;
+
+  for (let winnerVoter in winnerVoters) {
+    winnerVoters[winnerVoter] *= ratio;
+  }
+
+  // update the points
+  await setAllPoints(interaction.guild, winnerVoters);
+
+  // archive the prediction
+  await archivePrediction(interaction.guild, id);
+
+  await interaction.reply({
+    allowedMentions: { users: [] },
+    content: `${interaction.user} ended the prediction **#${id}**.`,
+  });
+}
+
+async function deletePrediction(interaction, id) {
+  const prediction = await getPrediction(interaction.guild, id);
+
+  let message;
+  if (!prediction) {
+    message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`;
+  } else if (
+    prediction.author !== interaction.user &&
+    !interaction.member.permissions.has("ADMINISTRATOR")
+  ) {
+    message = `You do not have permission. Only ${author} and server administrators can delete the prediction **#${id}**.`;
+  }
+
+  if (message) {
+    interaction.reply({
+      content: message,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const refundVoters = {};
+  for (let i = 0; i < prediction.options.length; i++) {
+    const voters = prediction.options[i].voters;
+    for (let voter in voters) {
+      refundVoters[voter] = voters[voter];
+    }
+  }
+
+  // update the points
+  await setAllPoints(interaction.guild, refundVoters);
+
+  // archive the prediction
+  await archivePrediction(interaction.guild, id);
+
+  await interaction.reply({
+    allowedMentions: { users: [] },
+    content: `${interaction.user} deleted the prediction **#${id}**.`,
+  });
 }
 
 function formatNumber(number) {
