@@ -25,7 +25,7 @@ module.exports = {
   predictPoints,
   setClosedPrediction,
   endPrediction,
-  deletePrediction,
+  cancelPrediction,
   createPrediction,
   closePredictionTimer,
   formatNumber,
@@ -148,8 +148,8 @@ async function showPrediction(interaction, id) {
       .setLabel(prediction.closed ? "End" : "Close")
       .setStyle("SUCCESS"),
     new MessageButton()
-      .setCustomId(`${prediction.uuid}_${id}_delete`)
-      .setLabel("Delete")
+      .setCustomId(`${prediction.uuid}_${id}_cancel`)
+      .setLabel("Cancel")
       .setStyle("DANGER")
   );
 
@@ -545,7 +545,7 @@ async function endPrediction(interaction, id, index) {
   });
 }
 
-async function deletePrediction(interaction, id) {
+async function cancelPrediction(interaction, id) {
   const prediction = await getPrediction(interaction.guild, id);
 
   let message;
@@ -555,7 +555,7 @@ async function deletePrediction(interaction, id) {
     prediction.author !== interaction.user &&
     !interaction.member.permissions.has("ADMINISTRATOR")
   ) {
-    message = `You do not have permission. Only ${author} and server administrators can delete the prediction **#${id}**.`;
+    message = `You do not have permission. Only ${author} and server administrators can cancel the prediction **#${id}**.`;
   }
 
   if (message) {
@@ -582,7 +582,7 @@ async function deletePrediction(interaction, id) {
 
   await interaction.reply({
     allowedMentions: { users: [] },
-    content: `${interaction.user} deleted the prediction **#${id}**.`,
+    content: `${interaction.user} cancelled the prediction **#${id}**.`,
   });
 }
 

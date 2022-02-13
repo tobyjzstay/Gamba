@@ -63,7 +63,7 @@ Create or have an existing Discord account at [Discord](https://discord.com/).
 | `/create <name> <option1> <option2>` | Create a new prediction      |
 | `/close <id>`                        | Close a prediction           |
 | `/end <id> <index>`                  | End a prediction             |
-| `/delete <id>`                       | Delete a prediction          |
+| `/cancel <id>`                       | Cancel a prediction          |
 
 ## License
 

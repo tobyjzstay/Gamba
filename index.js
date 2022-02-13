@@ -22,7 +22,7 @@ const {
   predictPoints,
   setClosedPrediction,
   endPrediction,
-  deletePrediction,
+  cancelPrediction,
   createPrediction,
   closePredictionTimer,
   formatNumber,
@@ -130,11 +130,11 @@ client.on("interactionCreate", async (interaction) => {
             case "close":
               await setClosedPrediction(interaction, args[1]);
               break;
-            case "delete":
+            case "cancel":
               const row2 = new MessageActionRow().addComponents(
                 new MessageButton()
-                  .setCustomId(`${prediction.uuid}_${args[1]}_delete_1`)
-                  .setLabel(`Delete "${prediction.name}"`)
+                  .setCustomId(`${prediction.uuid}_${args[1]}_cancel_1`)
+                  .setLabel(`Cancel "${prediction.name}"`)
                   .setStyle("DANGER")
               );
 
@@ -211,8 +211,8 @@ client.on("interactionCreate", async (interaction) => {
           case "end":
             await endPrediction(interaction, args[1], args[2]);
             break;
-          case "delete":
-            await deletePrediction(interaction, args[1]);
+          case "cancel":
+            await cancelPrediction(interaction, args[1]);
             break;
           default:
             break;

@@ -1,13 +1,13 @@
 /**
- * /delete command which delete a prediction.
+ * /cancel command to cancel a prediction.
  *
  * @author Toby Stayner <toby@swengineer.dev>
  */
 
-const { deletePrediction } = require("../helper");
+const { cancelPrediction } = require("../helper");
 
 module.exports = async function (interaction) {
   const id = interaction.options.getInteger("id");
 
-  await deletePrediction(interaction, id);
+  await cancelPrediction(interaction, id);
 };

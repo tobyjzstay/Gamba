@@ -59,8 +59,8 @@ module.exports = [
     ],
   },
   {
-    name: "delete",
-    description: "Delete a prediction",
+    name: "cancel",
+    description: "Cancel a prediction",
     options: [
       {
         name: "id",
