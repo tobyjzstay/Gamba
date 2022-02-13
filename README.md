@@ -53,17 +53,17 @@ Create or have an existing Discord account at [Discord](https://discord.com/).
 
 ## Usage
 
-| Command                              | Description                  |
-| :----------------------------------- | :--------------------------- |
-| `/gamba`                             | Lists all active predictions |
-| `/points [user]`                     | Get points                   |
-| `/leaderboard [role]`                | Show points leaderboard      |
-| `/predict <id> <index> <amount>`     | Predict with points          |
-| `/prediction <id>`                   | Show a prediction            |
-| `/create <name> <option1> <option2>` | Create a new prediction      |
-| `/close <id>`                        | Close a prediction           |
-| `/end <id> <index>`                  | End a prediction             |
-| `/cancel <id>`                       | Cancel a prediction          |
+| Command                                                       | Description                  |
+| :------------------------------------------------------------ | :--------------------------- |
+| `/gamba`                                                      | Lists all active predictions |
+| `/points [user]`                                              | Get points                   |
+| `/leaderboard [role]`                                         | Show points leaderboard      |
+| `/predict <id> <index> <amount>`                              | Predict with points          |
+| `/prediction <id>`                                            | Show a prediction            |
+| `/create <name> <option1> <option2> [minutes] [hours] [days]` | Create a new prediction      |
+| `/close <id>`                                                 | Close a prediction           |
+| `/end <id> <index>`                                           | End a prediction             |
+| `/cancel <id>`                                                | Cancel a prediction          |
 
 ## License
 
