@@ -125,6 +125,7 @@ client.on("interactionCreate", async (interaction) => {
             default:
               break;
           }
+          break;
         } else {
           const row = new MessageActionRow();
           const allocation = [5, 10, 25, 50, 100];
@@ -172,15 +173,32 @@ client.on("interactionCreate", async (interaction) => {
           });
         }
         break;
+      case 4:
+        const prediction22 = await getPrediction(interaction.guild, args[1]);
+
+        if (!prediction22 || prediction22.uuid !== args[0]) {
+          interaction.reply({
+            content:
+              (message = `The prediction **#${args[1]}** (${args[0]}) no longer exists. Use \`/gamba\` to list all the active predictions.`),
+            ephemeral: true,
+          });
+          return;
+        }
+
+        switch (args[2]) {
+          case "end":
+            await endPrediction(interaction, args[1], args[2]);
+            break;
+          case "delete":
+            await deletePrediction(interaction, args[1]);
+            break;
+          default:
+            break;
+        }
+        break;
       case 5:
         if (isNaN(args[3])) {
           switch (args[3]) {
-            case "end":
-              await endPrediction(interaction, args[1], args[3]);
-              break;
-            case "delete":
-              await deletePrediction(interaction, args[1]);
-              break;
             case "allIn":
               const prediction3 = await getPrediction(
                 interaction.guild,
@@ -235,6 +253,7 @@ client.on("interactionCreate", async (interaction) => {
             new Number(args[4])
           );
         }
+        break;
       default:
         break;
     }

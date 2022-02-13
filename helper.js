@@ -143,14 +143,37 @@ async function showPrediction(interaction, id) {
       .setStyle("DANGER")
   );
 
-  const closes1 = new Date(prediction.closes);
+  const closes = new Date(prediction.closes);
+
+  function msToTime(duration) {
+    var seconds = Math.floor((duration / 1000) % 60),
+      minutes = Math.floor((duration / (1000 * 60)) % 60),
+      hours = Math.floor((duration / (1000 * 60 * 60)) % 24),
+      days = Math.floor(duration / (1000 * 60 * 60) / 24);
+
+    let output = "";
+    if (days) output += `${days} day${days === 1 ? "" : "s"}`;
+    if (hours)
+      output += `${output ? " " : ""}${hours} hour${hours === 1 ? "" : "s"}`;
+    if (minutes)
+      output += `${output ? " " : ""}${minutes} minute${
+        minutes === 1 ? "" : "s"
+      }`;
+    if (seconds)
+      output += `${output ? " " : ""}${seconds} second${
+        seconds === 1 ? "" : "s"
+      }`;
+    return output;
+  }
 
   const member = await interaction.guild.members.fetch(prediction.author);
   const embedTitle = new MessageEmbed()
     .setColor("#404040")
     .setTitle(`#${id}: ${prediction.name}`)
     .setDescription(
-      prediction.closed ? "Predictions closed" : `` //`Prediction closes at ${closes1.toLocaleTimeString("en-NZ").toUpperCase()}, ${closes1.toLocaleDateString("en-NZ")}`
+      prediction.closed
+        ? "Predictions closed"
+        : `Prediction closes in ${msToTime(new Date(closes) - new Date())}`
     )
     .setAuthor({
       name: `${member.user.tag}`,
@@ -334,7 +357,7 @@ async function predictPoints(interaction, prediction, id, index, amount) {
       if (voters[interaction.user.id] && opt != index) {
         message = `You have already predicted "${name}" (**${opt}**) for **${formatNumber(
           voters[interaction.user.id]
-        )}** points.`;
+        )}** point${amount === 1 ? "" : "s"}.`;
         break;
       }
     }
