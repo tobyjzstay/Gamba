@@ -26,6 +26,8 @@ module.exports = {
   setClosedPrediction,
   endPrediction,
   deletePrediction,
+  createPrediction,
+  closePredictionTimer,
   formatNumber,
 };
 
@@ -108,7 +110,15 @@ async function addAllPoints(guild, increment) {
 async function getPrediction(guild, id) {
   try {
     const predictionsActiveData = await readData(guild, path.predictionsActive);
-    return predictionsActiveData[id];
+    return predictionsActiveData[id] ? predictionsActiveData[id] : matchUUID();
+
+    function matchUUID() {
+      let found;
+      for (let prediction in predictionsActiveData) {
+        if (predictionsActiveData[prediction].uuid === id) found = prediction;
+      }
+      return found;
+    }
   } catch (err) {
     console.error(err);
     await initialiseGuild(guild);
@@ -167,13 +177,16 @@ async function showPrediction(interaction, id) {
   }
 
   const member = await interaction.guild.members.fetch(prediction.author);
+  const timeLeft = new Date(closes) - new Date();
   const embedTitle = new MessageEmbed()
     .setColor("#404040")
     .setTitle(`#${id}: ${prediction.name}`)
     .setDescription(
       prediction.closed
-        ? "Predictions closed"
-        : `Prediction closes in ${msToTime(new Date(closes) - new Date())}`
+        ? "Prediction closed"
+        : timeLeft <= 0
+        ? "Prediction closing..."
+        : `Prediction closes in ${msToTime(timeLeft)}`
     )
     .setAuthor({
       name: `${member.user.tag}`,
@@ -571,6 +584,101 @@ async function deletePrediction(interaction, id) {
     allowedMentions: { users: [] },
     content: `${interaction.user} deleted the prediction **#${id}**.`,
   });
+}
+
+async function createPrediction(
+  interaction,
+  uuid,
+  name,
+  option1,
+  option2,
+  minutes,
+  hours,
+  days
+) {
+  const prediction = await getPrediction(interaction.guild, uuid);
+
+  if (prediction) {
+    interaction.reply({
+      content:
+        (message = `The prediction "${name}" has already been created. Use \`/gamba\` to list all the active predictions.`),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const created = new Date();
+  const closes = new Date(created);
+  closes.setMinutes(closes.getMinutes() + minutes);
+  closes.setHours(closes.getHours() + hours);
+  closes.setDate(closes.getDate() + days);
+
+  const newPrediction = {
+    uuid: uuid,
+    name: name,
+    author: interaction.user.id,
+    created: created,
+    closes: closes,
+    closed: false,
+    options: [
+      {
+        option: option1,
+        voters: {},
+      },
+      {
+        option: option2,
+        voters: {},
+      },
+    ],
+  };
+  await addPrediction(interaction, newPrediction);
+}
+
+async function addPrediction(interaction, prediction) {
+  try {
+    const predictionsActiveData = await readData(
+      interaction.guild,
+      path.predictionsActive
+    );
+
+    let updatedPredictionsActiveData = predictionsActiveData;
+    let id;
+    for (let i = 1; true; i++) {
+      if (!updatedPredictionsActiveData[i]) {
+        id = i;
+        updatedPredictionsActiveData[id] = prediction;
+        break;
+      }
+    }
+
+    fs.writeFileSync(
+      `${path.predictionsActive}${interaction.guild.id}.json`,
+      JSON.stringify(updatedPredictionsActiveData, null, 2),
+      "utf-8"
+    );
+
+    await showPrediction(interaction, id);
+    await closePredictionTimer(interaction.guild, id);
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(interaction.guild);
+    return await addPrediction(interaction, prediction);
+  }
+}
+
+async function closePredictionTimer(guild, id) {
+  const prediction = await getPrediction(guild, id);
+  const uuid = prediction.uuid;
+  const timeLeft = new Date(prediction.closes) - new Date();
+  setTimeout(
+    async () => {
+      const prediction = await getPrediction(guild, uuid);
+      if (prediction && !prediction.closed) {
+        await closePrediction(guild, id);
+      }
+    },
+    timeLeft > 0 ? timeLeft : 0
+  );
 }
 
 function formatNumber(number) {

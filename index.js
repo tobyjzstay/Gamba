@@ -12,9 +12,10 @@ const {
 } = require("discord.js");
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
-const { clientId, token } = require("./config.json");
+const { path, clientId, token } = require("./config.json");
 const {
   initialiseGuild,
+  readData,
   getPoints,
   addAllPoints,
   getPrediction,
@@ -22,6 +23,8 @@ const {
   setClosedPrediction,
   endPrediction,
   deletePrediction,
+  createPrediction,
+  closePredictionTimer,
   formatNumber,
 } = require("./helper");
 const schema = require("./schema");
@@ -53,8 +56,27 @@ const rest = new REST({ version: "9" }).setToken(token);
   }
 })();
 
-client.on("ready", () => {
+async function getActivePredictions(guild) {
+  try {
+    const predictionsActiveData = await readData(guild, path.predictionsActive);
+    return predictionsActiveData;
+  } catch (err) {
+    console.error(err);
+    await initialiseGuild(guild);
+    return await getActivePredictions(guild);
+  }
+}
+
+client.on("ready", async () => {
   client.user.setActivity("/gamba", { type: "LISTENING" });
+
+  client.guilds.cache.forEach(async (guild) => {
+    const predictionsActiveData = await getActivePredictions(guild);
+    for (let prediction in predictionsActiveData) {
+      await closePredictionTimer(guild, prediction);
+    }
+  });
+
   setInterval(() => {
     client.guilds.cache.forEach(async (guild) => {
       await addAllPoints(guild, 10);
@@ -251,6 +273,20 @@ client.on("interactionCreate", async (interaction) => {
             args[1],
             new Number(args[2]),
             new Number(args[4])
+          );
+        }
+        break;
+      case 6:
+        if (args[0] === "create") {
+          await createPrediction(
+            interaction,
+            args[1], // uuid
+            args[2], // name
+            args[3], // option1
+            args[4], // option2
+            Math.floor((args[5] / (1000 * 60)) % 60), // minutes
+            Math.floor((args[5] / (1000 * 60 * 60)) % 24), // hours
+            Math.floor(args[5] / (1000 * 60 * 60) / 24) // days
           );
         }
         break;
