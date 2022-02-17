@@ -132,22 +132,24 @@ async function showPrediction(interaction, id) {
   const option2Image = new MessageAttachment("./images/option2.png");
   const row = new MessageActionRow().addComponents(
     new MessageButton()
-      .setDisabled(prediction.closed)
+      .setDisabled(!prediction || prediction.closed)
       .setCustomId(`${prediction.uuid}_${id}_1`)
       .setLabel(`Predict "${prediction.options[0].option}"`)
       .setStyle("PRIMARY"),
     new MessageButton()
-      .setDisabled(prediction.closed)
+      .setDisabled(!prediction || prediction.closed)
       .setCustomId(`${prediction.uuid}_${id}_2`)
       .setLabel(`Predict "${prediction.options[1].option}"`)
       .setStyle("SECONDARY"),
     new MessageButton()
+      .setDisabled(!prediction)
       .setCustomId(
         `${prediction.uuid}_${id}_${prediction.closed ? "end" : "close"}`
       )
       .setLabel(prediction.closed ? "End" : "Close")
       .setStyle("SUCCESS"),
     new MessageButton()
+      .setDisabled(!prediction)
       .setCustomId(`${prediction.uuid}_${id}_cancel`)
       .setLabel("Cancel")
       .setStyle("DANGER")
@@ -182,7 +184,9 @@ async function showPrediction(interaction, id) {
     .setColor("#404040")
     .setTitle(`#${id}: ${prediction.name}`)
     .setDescription(
-      prediction.closed
+      !prediction
+        ? "Prediction cancelled"
+        : prediction.closed
         ? "Prediction closed"
         : timeLeft <= 0
         ? "Prediction closing..."
@@ -302,6 +306,43 @@ async function showPrediction(interaction, id) {
     files: [option1Image, option2Image],
     components: [row],
   });
+
+  if (!prediction.closed) {
+    const intervalId = setInterval(async () => {
+      const prediction = await getPrediction(interaction.guild, id);
+      if (!prediction) {
+        clearInterval(intervalId);
+        return;
+      }
+      const timeLeft = new Date(closes) - new Date();
+      const embedTitle = new MessageEmbed()
+        .setColor("#404040")
+        .setTitle(`#${id}: ${prediction.name}`)
+        .setDescription(
+          prediction.closed
+            ? "Prediction closed"
+            : timeLeft <= 0
+            ? "Prediction closing..."
+            : `Prediction closes in ${msToTime(timeLeft)}`
+        )
+        .setAuthor({
+          name: `${member.user.tag}`,
+          iconURL: `${member.user.displayAvatarURL()}`,
+        })
+        .setFooter({
+          text: `${prediction.uuid}`,
+        });
+
+      await interaction.editReply({
+        allowedMentions: { users: [] },
+        fetchReply: true,
+        embeds: [embedTitle, embed1, embed2],
+        components: [row],
+      });
+
+      if (prediction.closed) clearInterval(intervalId);
+    }, 1000);
+  }
 }
 
 async function setAllPoints(guild, voters) {
