@@ -37,9 +37,9 @@ module.exports = async function (interaction) {
   else if (hours < 0 || hours > 23)
     message =
       "Invalid input for **hours**. Enter an integer between **0** and **23**.";
-  else if (days < 0 || days > 365)
+  else if (days < 0 || days > 7)
     message =
-      "Invalid input for **days**. Enter an integer between **0** and **365**.";
+      "Invalid input for **days**. Enter an integer between **0** and **7**.";
   else if (minutes === 0 && hours === 0 && days === 0) {
     const row = new MessageActionRow().addComponents(
       new MessageButton()
