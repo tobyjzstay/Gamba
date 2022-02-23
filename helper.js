@@ -127,119 +127,124 @@ async function getPrediction(guild, id) {
 }
 
 async function showPrediction(interaction, id) {
-  const prediction = await getPrediction(interaction.guild, id);
-  const option1Image = new MessageAttachment("./images/option1.png");
-  const option2Image = new MessageAttachment("./images/option2.png");
-  const row = new MessageActionRow().addComponents(
-    new MessageButton()
-      .setDisabled(!prediction || prediction.closed)
-      .setCustomId(`${prediction.uuid}_${id}_1`)
-      .setLabel(`Predict "${prediction.options[0].option}"`)
-      .setStyle("PRIMARY"),
-    new MessageButton()
-      .setDisabled(!prediction || prediction.closed)
-      .setCustomId(`${prediction.uuid}_${id}_2`)
-      .setLabel(`Predict "${prediction.options[1].option}"`)
-      .setStyle("SECONDARY"),
-    new MessageButton()
-      .setDisabled(!prediction)
-      .setCustomId(
-        `${prediction.uuid}_${id}_${prediction.closed ? "end" : "close"}`
+  let initialise = true;
+  const intervalId = setInterval(async () => {
+    const prediction = await getPrediction(interaction.guild, id);
+    const option1Image = new MessageAttachment("./images/option1.png");
+    const option2Image = new MessageAttachment("./images/option2.png");
+    const row = new MessageActionRow().addComponents(
+      new MessageButton()
+        .setDisabled(!prediction || prediction.closed)
+        .setCustomId(`${prediction.uuid}_${id}_1`)
+        .setLabel(`Predict "${prediction.options[0].option}"`)
+        .setStyle("PRIMARY"),
+      new MessageButton()
+        .setDisabled(!prediction || prediction.closed)
+        .setCustomId(`${prediction.uuid}_${id}_2`)
+        .setLabel(`Predict "${prediction.options[1].option}"`)
+        .setStyle("SECONDARY"),
+      new MessageButton()
+        .setDisabled(!prediction)
+        .setCustomId(
+          `${prediction.uuid}_${id}_${prediction.closed ? "end" : "close"}`
+        )
+        .setLabel(prediction.closed ? "End" : "Close")
+        .setStyle("SUCCESS"),
+      new MessageButton()
+        .setDisabled(!prediction)
+        .setCustomId(`${prediction.uuid}_${id}_cancel`)
+        .setLabel("Cancel")
+        .setStyle("DANGER")
+    );
+
+    const closes = new Date(prediction.closes);
+
+    function msToTime(duration) {
+      var seconds = Math.floor((duration / 1000) % 60),
+        minutes = Math.floor((duration / (1000 * 60)) % 60),
+        hours = Math.floor((duration / (1000 * 60 * 60)) % 24),
+        days = Math.floor(duration / (1000 * 60 * 60) / 24);
+
+      let output = "";
+      if (days) output += `${days} day${days === 1 ? "" : "s"}`;
+      if (hours)
+        output += `${output ? " " : ""}${hours} hour${hours === 1 ? "" : "s"}`;
+      if (minutes)
+        output += `${output ? " " : ""}${minutes} minute${
+          minutes === 1 ? "" : "s"
+        }`;
+      if (seconds)
+        output += `${output ? " " : ""}${seconds} second${
+          seconds === 1 ? "" : "s"
+        }`;
+      return output;
+    }
+
+    const member = await interaction.guild.members.fetch(prediction.author);
+    const timeLeft = new Date(closes) - new Date();
+    const time = msToTime(timeLeft);
+    const embedTitle = new MessageEmbed()
+      .setColor("#404040")
+      .setTitle(`#${id}: ${prediction.name}`)
+      .setDescription(
+        !prediction
+          ? "Prediction cancelled"
+          : prediction.closed
+          ? "Prediction closed"
+          : timeLeft <= 0 || !time
+          ? "Prediction closing..."
+          : `Prediction closes in ${time}`
       )
-      .setLabel(prediction.closed ? "End" : "Close")
-      .setStyle("SUCCESS"),
-    new MessageButton()
-      .setDisabled(!prediction)
-      .setCustomId(`${prediction.uuid}_${id}_cancel`)
-      .setLabel("Cancel")
-      .setStyle("DANGER")
-  );
+      .setAuthor({
+        name: `${member.user.tag}`,
+        iconURL: `${member.user.displayAvatarURL()}`,
+      })
+      .setFooter({
+        text: `${prediction.uuid}`,
+      });
 
-  const closes = new Date(prediction.closes);
+    const voters1 = prediction.options[0].voters;
+    const totalPoints1 = Object.entries(voters1).reduce((p, i) => p + i[1], 0);
 
-  function msToTime(duration) {
-    var seconds = Math.floor((duration / 1000) % 60),
-      minutes = Math.floor((duration / (1000 * 60)) % 60),
-      hours = Math.floor((duration / (1000 * 60 * 60)) % 24),
-      days = Math.floor(duration / (1000 * 60 * 60) / 24);
+    const topVoters1 = Object.entries(voters1)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 1);
 
-    let output = "";
-    if (days) output += `${days} day${days === 1 ? "" : "s"}`;
-    if (hours)
-      output += `${output ? " " : ""}${hours} hour${hours === 1 ? "" : "s"}`;
-    if (minutes)
-      output += `${output ? " " : ""}${minutes} minute${
-        minutes === 1 ? "" : "s"
-      }`;
-    if (seconds)
-      output += `${output ? " " : ""}${seconds} second${
-        seconds === 1 ? "" : "s"
-      }`;
-    return output;
-  }
+    const topVoter1 = topVoters1[0]
+      ? await interaction.guild.members.fetch(topVoters1[0][0])
+      : null;
 
-  const member = await interaction.guild.members.fetch(prediction.author);
-  const timeLeft = new Date(closes) - new Date();
-  const embedTitle = new MessageEmbed()
-    .setColor("#404040")
-    .setTitle(`#${id}: ${prediction.name}`)
-    .setDescription(
-      !prediction
-        ? "Prediction cancelled"
-        : prediction.closed
-        ? "Prediction closed"
-        : timeLeft <= 0
-        ? "Prediction closing..."
-        : `Prediction closes in ${msToTime(timeLeft)}`
-    )
-    .setAuthor({
-      name: `${member.user.tag}`,
-      iconURL: `${member.user.displayAvatarURL()}`,
-    })
-    .setFooter({
-      text: `${prediction.uuid}`,
-    });
+    const voters2 = prediction.options[1].voters;
+    const totalPoints2 = Object.entries(voters2).reduce((p, i) => p + i[1], 0);
 
-  const voters1 = prediction.options[0].voters;
-  const totalPoints1 = Object.entries(voters1).reduce((p, i) => p + i[1], 0);
+    const topVoters2 = Object.entries(voters2)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 1);
 
-  const topVoters1 = Object.entries(voters1)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 1);
+    const topVoter2 = topVoters2[0]
+      ? await interaction.guild.members.fetch(topVoters2[0][0])
+      : null;
 
-  const topVoter1 = topVoters1[0]
-    ? await interaction.guild.members.fetch(topVoters1[0][0])
-    : null;
-
-  const voters2 = prediction.options[1].voters;
-  const totalPoints2 = Object.entries(voters2).reduce((p, i) => p + i[1], 0);
-
-  const topVoters2 = Object.entries(voters2)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 1);
-
-  const topVoter2 = topVoters2[0]
-    ? await interaction.guild.members.fetch(topVoters2[0][0])
-    : null;
-
-  const totalVoters1 = Object.keys(voters1).length;
-  const totalVoters2 = Object.keys(voters2).length;
-  const embed1 = new MessageEmbed()
-    .setColor("#387aff")
-    .setTitle(
-      `${prediction.options[0].option}${
-        totalVoters1 + totalVoters2
-          ? ` (${Math.round(
-              (totalPoints1 / (totalPoints1 + totalPoints2)) * 100
-            )}%)`
-          : ``
-      }`
-    )
-    .setThumbnail("attachment://option1.png")
-    .addFields(
-      {
-        name: "\u200b",
-        value: `:yellow_circle: **Total Points:** ${formatNumber(totalPoints1)}
+    const totalVoters1 = Object.keys(voters1).length;
+    const totalVoters2 = Object.keys(voters2).length;
+    const embed1 = new MessageEmbed()
+      .setColor("#387aff")
+      .setTitle(
+        `${prediction.options[0].option}${
+          totalVoters1 + totalVoters2
+            ? ` (${Math.round(
+                (totalPoints1 / (totalPoints1 + totalPoints2)) * 100
+              )}%)`
+            : ``
+        }`
+      )
+      .setThumbnail("attachment://option1.png")
+      .addFields(
+        {
+          name: "\u200b",
+          value: `:yellow_circle: **Total Points:** ${formatNumber(
+            totalPoints1
+          )}
             :trophy: **Return Ratio:** 1:${
               totalPoints2 / totalPoints1 < 1
                 ? Math.round((totalPoints2 / totalPoints1) * 100) / 100 + 1
@@ -253,30 +258,32 @@ async function showPrediction(interaction, id) {
                 ? `${topVoter1}: ${formatNumber(topVoters1[0][1])}`
                 : "-"
             }`,
-        inline: true,
-      },
-      {
-        name: "\u200b",
-        value: "\u200b",
-        inline: true,
-      }
-    );
-  const embed2 = new MessageEmbed()
-    .setColor("#f5009b")
-    .setTitle(
-      `${prediction.options[1].option}${
-        totalVoters1 + totalVoters2
-          ? ` (${Math.round(
-              (totalPoints2 / (totalPoints1 + totalPoints2)) * 100
-            )}%)`
-          : ``
-      }`
-    )
-    .setThumbnail("attachment://option2.png")
-    .addFields(
-      {
-        name: "\u200b",
-        value: `:yellow_circle: **Total Points:** ${formatNumber(totalPoints2)}
+          inline: true,
+        },
+        {
+          name: "\u200b",
+          value: "\u200b",
+          inline: true,
+        }
+      );
+    const embed2 = new MessageEmbed()
+      .setColor("#f5009b")
+      .setTitle(
+        `${prediction.options[1].option}${
+          totalVoters1 + totalVoters2
+            ? ` (${Math.round(
+                (totalPoints2 / (totalPoints1 + totalPoints2)) * 100
+              )}%)`
+            : ``
+        }`
+      )
+      .setThumbnail("attachment://option2.png")
+      .addFields(
+        {
+          name: "\u200b",
+          value: `:yellow_circle: **Total Points:** ${formatNumber(
+            totalPoints2
+          )}
             :trophy: **Return Ratio:** 1:${
               totalPoints1 / totalPoints2 < 1
                 ? Math.round((totalPoints1 / totalPoints2) * 100) / 100 + 1
@@ -290,59 +297,78 @@ async function showPrediction(interaction, id) {
                 ? `${topVoter2}: ${formatNumber(topVoters2[0][1])}`
                 : "-"
             }`,
-        inline: true,
-      },
-      {
-        name: "\u200b",
-        value: "\u200b",
-        inline: true,
-      }
-    );
+          inline: true,
+        },
+        {
+          name: "\u200b",
+          value: "\u200b",
+          inline: true,
+        }
+      );
 
-  await interaction.reply({
-    allowedMentions: { users: [] },
-    fetchReply: true,
-    embeds: [embedTitle, embed1, embed2],
-    files: [option1Image, option2Image],
-    components: [row],
-  });
-
-  if (!prediction.closed) {
-    const intervalId = setInterval(async () => {
-      const prediction = await getPrediction(interaction.guild, id);
-      if (!prediction) {
-        clearInterval(intervalId);
-        return;
-      }
-      const timeLeft = new Date(closes) - new Date();
-      const embedTitle = new MessageEmbed()
-        .setColor("#404040")
-        .setTitle(`#${id}: ${prediction.name}`)
-        .setDescription(
-          prediction.closed
-            ? "Prediction closed"
-            : timeLeft <= 0
-            ? "Prediction closing..."
-            : `Prediction closes in ${msToTime(timeLeft)}`
-        )
-        .setAuthor({
-          name: `${member.user.tag}`,
-          iconURL: `${member.user.displayAvatarURL()}`,
-        })
-        .setFooter({
-          text: `${prediction.uuid}`,
-        });
-
+    if (initialise) {
+      initialise = false;
+      await interaction.reply({
+        allowedMentions: { users: [] },
+        fetchReply: true,
+        embeds: [embedTitle, embed1, embed2],
+        files: [option1Image, option2Image],
+        components: [row],
+      });
+    } else {
       await interaction.editReply({
         allowedMentions: { users: [] },
         fetchReply: true,
         embeds: [embedTitle, embed1, embed2],
         components: [row],
       });
+    }
 
-      if (prediction.closed) clearInterval(intervalId);
-    }, 1000);
-  }
+    // const prediction = await getPrediction(interaction.guild, id);
+    // if (!prediction) {
+    //   clearInterval(intervalId);
+    //   return;
+    // }
+    // const timeLeft = new Date(closes) - new Date();
+    // const embedTitle = new MessageEmbed()
+    //   .setColor("#404040")
+    //   .setTitle(
+    //     `#${id}: ${prediction.name}`
+    //     // `#${id}: ${prediction.name // TODO
+    //     //   .match(/<?@?!?(\d{17,19})>?/g)
+    //     //   .forEach((element) => {
+    //     //     element.match(/\d+/).forEach((id) => {
+    //     //       const user = interaction.client.mentions.cache.find(
+    //     //         (user) => user.id === id
+    //     //       );
+    //     //       if (user) console.log(user.tag);
+    //     //     });
+    //     //   })}`
+    //   )
+    //   .setDescription(
+    //     prediction.closed
+    //       ? "Prediction closed"
+    //       : timeLeft <= 0
+    //       ? "Prediction closing..."
+    //       : `Prediction closes in ${msToTime(timeLeft)}`
+    //   )
+    //   .setAuthor({
+    //     name: `${member.user.tag}`,
+    //     iconURL: `${member.user.displayAvatarURL()}`,
+    //   })
+    //   .setFooter({
+    //     text: `${prediction.uuid}`,
+    //   });
+
+    // await interaction.editReply({
+    //   allowedMentions: { users: [] },
+    //   fetchReply: true,
+    //   embeds: [embedTitle, embed1, embed2],
+    //   components: [row],
+    // });
+
+    if (prediction.closed || timeLeft <= 0) clearInterval(intervalId);
+  }, 1000);
 }
 
 async function setAllPoints(guild, voters) {
@@ -582,7 +608,11 @@ async function endPrediction(interaction, id, index) {
 
   await interaction.reply({
     allowedMentions: { users: [] },
-    content: `${interaction.user} ended the prediction **#${id}**.`,
+    content: `${
+      interaction.user
+    } ended the prediction **#${id}**. The outcome was "${
+      prediction.options[index - 1].option
+    }" (**${index}**).`,
   });
 }
 
@@ -633,7 +663,7 @@ async function createPrediction(
   name,
   option1,
   option2,
-  minutes,
+  minutes, // TODO pass in total milliseconds instead
   hours,
   days
 ) {
