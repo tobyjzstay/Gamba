@@ -11,14 +11,14 @@ module.exports = async function (interaction) {
   const id = interaction.options.getInteger("id");
   const prediction = await getPrediction(interaction.guild, id);
   if (!prediction) {
-    interaction.reply({
+    await interaction.reply({
       content:
         (message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`),
       ephemeral: true,
     });
     return;
   }
-  await showPrediction(interaction, id);
+  await showPrediction(interaction, id, true);
 };
 
 async function getPrediction(guild, id) {

@@ -126,9 +126,12 @@ async function getPrediction(guild, id) {
   }
 }
 
-async function showPrediction(interaction, id) {
-  let initialise = true;
-  const intervalId = setInterval(async () => {
+async function showPrediction(interaction, id, reply) {
+  let message;
+  let timeLeft;
+  let timer;
+
+  const intervalId = async function () {
     const prediction = await getPrediction(interaction.guild, id);
     const option1Image = new MessageAttachment("./images/option1.png");
     const option2Image = new MessageAttachment("./images/option2.png");
@@ -160,20 +163,20 @@ async function showPrediction(interaction, id) {
     const closes = new Date(prediction.closes);
 
     function msToTime(duration) {
-      var seconds = Math.floor((duration / 1000) % 60),
+      let seconds = Math.floor((duration / 1000) % 60),
         minutes = Math.floor((duration / (1000 * 60)) % 60),
         hours = Math.floor((duration / (1000 * 60 * 60)) % 24),
         days = Math.floor(duration / (1000 * 60 * 60) / 24);
 
       let output = "";
       if (days) output += `${days} day${days === 1 ? "" : "s"}`;
-      if (hours)
+      else if (hours)
         output += `${output ? " " : ""}${hours} hour${hours === 1 ? "" : "s"}`;
-      if (minutes)
+      else if (minutes)
         output += `${output ? " " : ""}${minutes} minute${
           minutes === 1 ? "" : "s"
         }`;
-      if (seconds)
+      else if (seconds)
         output += `${output ? " " : ""}${seconds} second${
           seconds === 1 ? "" : "s"
         }`;
@@ -181,7 +184,18 @@ async function showPrediction(interaction, id) {
     }
 
     const member = await interaction.guild.members.fetch(prediction.author);
-    const timeLeft = new Date(closes) - new Date();
+    timeLeft = new Date(closes) - new Date();
+
+    let seconds = Math.floor((timeLeft / 1000) % 60),
+      minutes = Math.floor((timeLeft / (1000 * 60)) % 60),
+      hours = Math.floor((timeLeft / (1000 * 60 * 60)) % 24),
+      days = Math.floor(timeLeft / (1000 * 60 * 60) / 24);
+
+    if (days > 0) timer = 1000 * 60 * 60 * 24;
+    else if (hours > 0) timer = 1000 * 60 * 60;
+    else if (minutes > 0) timer = 1000 * 60;
+    else if (seconds > 0) timer = 1000;
+
     const time = msToTime(timeLeft);
     const embedTitle = new MessageEmbed()
       .setColor("#404040")
@@ -247,7 +261,7 @@ async function showPrediction(interaction, id) {
           )}
             :trophy: **Return Ratio:** 1:${
               totalPoints2 / totalPoints1 < 1
-                ? Math.round((totalPoints2 / totalPoints1) * 100) / 100 + 1
+                ? Math.round((totalPoints2 / totalPoints1 + 1) * 100) / 100
                 : Math.round((totalPoints2 / totalPoints1) * 100) / 100
             }
             :family_man_girl: **Total Voters:** ${
@@ -286,7 +300,7 @@ async function showPrediction(interaction, id) {
           )}
             :trophy: **Return Ratio:** 1:${
               totalPoints1 / totalPoints2 < 1
-                ? Math.round((totalPoints1 / totalPoints2) * 100) / 100 + 1
+                ? Math.round((totalPoints1 / totalPoints2 + 1) * 100) / 100
                 : Math.round((totalPoints1 / totalPoints2) * 100) / 100
             }
             :family_man_girl: **Total Voters:** ${
@@ -306,9 +320,12 @@ async function showPrediction(interaction, id) {
         }
       );
 
-    if (initialise) {
-      initialise = false;
-      await interaction.reply({
+    if (!message) {
+      if (reply) await interaction.reply({ content: `Displaying prediction **#${id}**.`, ephemeral: true });
+      const channel = await interaction.member.guild.channels.cache.get(
+        interaction.channelId
+      );
+      message = await channel.send({
         allowedMentions: { users: [] },
         fetchReply: true,
         embeds: [embedTitle, embed1, embed2],
@@ -316,7 +333,7 @@ async function showPrediction(interaction, id) {
         components: [row],
       });
     } else {
-      await interaction.editReply({
+      await message.edit({
         allowedMentions: { users: [] },
         fetchReply: true,
         embeds: [embedTitle, embed1, embed2],
@@ -324,51 +341,9 @@ async function showPrediction(interaction, id) {
       });
     }
 
-    // const prediction = await getPrediction(interaction.guild, id);
-    // if (!prediction) {
-    //   clearInterval(intervalId);
-    //   return;
-    // }
-    // const timeLeft = new Date(closes) - new Date();
-    // const embedTitle = new MessageEmbed()
-    //   .setColor("#404040")
-    //   .setTitle(
-    //     `#${id}: ${prediction.name}`
-    //     // `#${id}: ${prediction.name // TODO
-    //     //   .match(/<?@?!?(\d{17,19})>?/g)
-    //     //   .forEach((element) => {
-    //     //     element.match(/\d+/).forEach((id) => {
-    //     //       const user = interaction.client.mentions.cache.find(
-    //     //         (user) => user.id === id
-    //     //       );
-    //     //       if (user) console.log(user.tag);
-    //     //     });
-    //     //   })}`
-    //   )
-    //   .setDescription(
-    //     prediction.closed
-    //       ? "Prediction closed"
-    //       : timeLeft <= 0
-    //       ? "Prediction closing..."
-    //       : `Prediction closes in ${msToTime(timeLeft)}`
-    //   )
-    //   .setAuthor({
-    //     name: `${member.user.tag}`,
-    //     iconURL: `${member.user.displayAvatarURL()}`,
-    //   })
-    //   .setFooter({
-    //     text: `${prediction.uuid}`,
-    //   });
-
-    // await interaction.editReply({
-    //   allowedMentions: { users: [] },
-    //   fetchReply: true,
-    //   embeds: [embedTitle, embed1, embed2],
-    //   components: [row],
-    // });
-
-    if (prediction.closed || timeLeft <= 0) clearInterval(intervalId);
-  }, 1000);
+    if (!prediction.closed) setTimeout(intervalId, timer);
+  };
+  setTimeout(intervalId, timer);
 }
 
 async function setAllPoints(guild, voters) {
@@ -444,7 +419,7 @@ async function predictPoints(interaction, prediction, id, index, amount) {
   }
 
   if (message) {
-    interaction.reply({
+    await interaction.reply({
       content: message,
       ephemeral: true,
     });
@@ -521,7 +496,7 @@ async function setClosedPrediction(interaction, id) {
   }
 
   if (message) {
-    interaction.reply({
+    await interaction.reply({
       content: message,
       ephemeral: true,
     });
@@ -554,7 +529,7 @@ async function closePrediction(guild, id) {
   }
 }
 
-async function endPrediction(interaction, id, index) {
+async function endPrediction(interaction, id, index, reply) {
   const prediction = await getPrediction(interaction.guild, id);
 
   let message;
@@ -572,7 +547,7 @@ async function endPrediction(interaction, id, index) {
   }
 
   if (message) {
-    interaction.reply({
+    await interaction.reply({
       content: message,
       ephemeral: true,
     });
@@ -606,17 +581,26 @@ async function endPrediction(interaction, id, index) {
   // archive the prediction
   await archivePrediction(interaction.guild, id);
 
-  await interaction.reply({
+  const data = {
     allowedMentions: { users: [] },
     content: `${
       interaction.user
     } ended the prediction **#${id}**. The outcome was "${
       prediction.options[index - 1].option
     }" (**${index}**).`,
-  });
+  };
+  if (reply) await interaction.reply(data);
+  else {
+    const channel = await interaction.member.guild.channels.cache.get(
+      interaction.channelId
+    );
+    await channel.send(data);
+    await interaction.deferUpdate();
+  }
+  return;
 }
 
-async function cancelPrediction(interaction, id) {
+async function cancelPrediction(interaction, id, reply) {
   const prediction = await getPrediction(interaction.guild, id);
 
   let message;
@@ -630,7 +614,7 @@ async function cancelPrediction(interaction, id) {
   }
 
   if (message) {
-    interaction.reply({
+    await interaction.reply({
       content: message,
       ephemeral: true,
     });
@@ -651,10 +635,18 @@ async function cancelPrediction(interaction, id) {
   // archive the prediction
   await archivePrediction(interaction.guild, id);
 
-  await interaction.reply({
+  const data = {
     allowedMentions: { users: [] },
     content: `${interaction.user} cancelled the prediction **#${id}**.`,
-  });
+  };
+  if (reply) await interaction.reply(data);
+  else {
+    const channel = await interaction.member.guild.channels.cache.get(
+      interaction.channelId
+    );
+    await channel.send(data);
+  }
+  return;
 }
 
 async function createPrediction(
@@ -670,7 +662,7 @@ async function createPrediction(
   const prediction = await getPrediction(interaction.guild, uuid);
 
   if (prediction) {
-    interaction.reply({
+    await interaction.reply({
       content:
         (message = `The prediction "${name}" has already been created. Use \`/gamba\` to list all the active predictions.`),
       ephemeral: true,
@@ -703,6 +695,7 @@ async function createPrediction(
     ],
   };
   await addPrediction(interaction, newPrediction);
+  await interaction.deferUpdate();
 }
 
 async function addPrediction(interaction, prediction) {
@@ -728,7 +721,7 @@ async function addPrediction(interaction, prediction) {
       "utf-8"
     );
 
-    await showPrediction(interaction, id);
+    await showPrediction(interaction, id, false);
     await closePredictionTimer(interaction.guild, id);
   } catch (err) {
     console.error(err);

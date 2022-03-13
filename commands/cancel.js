@@ -9,5 +9,5 @@ const { cancelPrediction } = require("../helper");
 module.exports = async function (interaction) {
   const id = interaction.options.getInteger("id");
 
-  await cancelPrediction(interaction, id);
+  await cancelPrediction(interaction, id, true);
 };

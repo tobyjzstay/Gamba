@@ -15,7 +15,7 @@ module.exports = async function (interaction) {
   let results = interaction.options.getInteger("results");
   if (!results) results = 10;
   else if (results < 1 || results > 25) {
-    interaction.reply({
+    await interaction.reply({
       content:
         "Invalid input for **results**. Enter a number between **1** and **25**.",
       ephemeral: true,
@@ -32,7 +32,7 @@ module.exports = async function (interaction) {
     roleMembers[user] = points;
   });
   if (Object.keys(roleMembers).length === 0) {
-    interaction.reply({
+    await interaction.reply({
       content: `Could not find any users for ${role}.`,
       ephemeral: true,
     });

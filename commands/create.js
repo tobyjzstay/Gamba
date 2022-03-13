@@ -83,7 +83,7 @@ module.exports = async function (interaction) {
   }
 
   if (message) {
-    interaction.reply({
+    await interaction.reply({
       content: message,
       ephemeral: true,
     });
