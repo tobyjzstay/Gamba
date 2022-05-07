@@ -122,7 +122,7 @@ client.on("interactionCreate", async (interaction) => {
               );
 
               await interaction.reply({
-                content: `Ending prediction **#${args[1]}**. Select the prediction that won below or use \`/end ${args[1]} <index>\`.`,
+                content: `Ending prediction **#${args[1]}**. Select the prediction outcome below or use \`/end ${args[1]} <index>\`.`,
                 ephemeral: true,
                 components: [row],
               });
@@ -199,7 +199,7 @@ client.on("interactionCreate", async (interaction) => {
         const prediction22 = await getPrediction(interaction.guild, args[1]);
 
         if (!prediction22 || prediction22.uuid !== args[0]) {
-          interaction.reply({
+          await interaction.reply({
             content:
               (message = `The prediction **#${args[1]}** (${args[0]}) no longer exists. Use \`/gamba\` to list all the active predictions.`),
             ephemeral: true,
@@ -209,10 +209,10 @@ client.on("interactionCreate", async (interaction) => {
 
         switch (args[2]) {
           case "end":
-            await endPrediction(interaction, args[1], args[2]);
+            await endPrediction(interaction, args[1], args[3], false);
             break;
           case "cancel":
-            await cancelPrediction(interaction, args[1]);
+            await cancelPrediction(interaction, args[1], false);
             break;
           default:
             break;
@@ -228,7 +228,7 @@ client.on("interactionCreate", async (interaction) => {
               );
 
               if (!prediction3 || prediction3.uuid !== args[0]) {
-                interaction.reply({
+                await interaction.reply({
                   content:
                     (message = `The prediction **#${args[1]}** (${args[0]}) no longer exists. Use \`/gamba\` to list all the active predictions.`),
                   ephemeral: true,
@@ -259,7 +259,7 @@ client.on("interactionCreate", async (interaction) => {
           const prediction2 = await getPrediction(interaction.guild, args[1]);
 
           if (!prediction2 || prediction2.uuid !== args[0]) {
-            interaction.reply({
+            await interaction.reply({
               content:
                 (message = `The prediction **#${args[1]}** (${args[0]}) no longer exists. Use \`/gamba\` to list all the active predictions.`),
               ephemeral: true,
