@@ -1,3 +1,5 @@
+![Gamba](images/logo.png)
+
 # Gamba
 
 Gamba is a Discord bot to create predictions based on Twitch Channel Points Predictions.
@@ -26,23 +28,23 @@ Create or have an existing Discord account at [Discord](https://discord.com/).
 6. Under `OAuth2 > General`, copy the `Client ID` of the bot.
 7. Under `OAuth2 > URL Generator`, select `bot` and `application.commands` for scopes and `Administrator` for bot permissions. Copy the generated URL at the bottom of the page.
 8. Clone the repository:
-   ```sh
-   git clone git@github.com:tobyjzstay/Gamba.git
-   ```
+    ```sh
+    git clone git@github.com:tobyjzstay/Gamba.git
+    ```
 9. Install NPM packages in the cloned repository:
-   ```sh
-   npm install
-   ```
+    ```sh
+    npm install
+    ```
 10. Create a file named `config.js` at the root level and copy the following:
     ```json
     {
-      "clientId": "<Client ID>",
-      "token": "<Token>",
-      "path": {
-        "points": "./data/points/",
-        "predictionsActive": "./data/predictions/active/",
-        "predictionsArchive": "./data/predictions/archive/"
-      }
+        "clientId": "<Client ID>",
+        "token": "<Token>",
+        "path": {
+            "points": "./data/points/",
+            "predictionsActive": "./data/predictions/active/",
+            "predictionsArchive": "./data/predictions/archive/"
+        }
     }
     ```
 11. Run the bot:
@@ -57,7 +59,7 @@ Create or have an existing Discord account at [Discord](https://discord.com/).
 | :------------------------------------------------------------ | :--------------------------- |
 | `/gamba`                                                      | Lists all active predictions |
 | `/points [user]`                                              | Get points                   |
-| `/leaderboard [role]`                                         | Show points leaderboard      |
+| `/leaderboard [role] [results]`                               | Show points leaderboard      |
 | `/predict <id> <index> <amount>`                              | Predict with points          |
 | `/prediction <id>`                                            | Show a prediction            |
 | `/create <name> <option1> <option2> [minutes] [hours] [days]` | Create a new prediction      |
