@@ -422,7 +422,7 @@ async function endPrediction(interaction, id, index, reply) {
     let ratio = totalPointsLost / totalPointsWon;
 
     for (let winnerVoter in winnerVoters) {
-        winnerVoters[winnerVoter] = winnerVoters[winnerVoter] * ratio;
+        winnerVoters[winnerVoter] = Math.round(winnerVoters[winnerVoter] * ratio);
     }
 
     // update the points
