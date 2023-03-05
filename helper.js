@@ -109,8 +109,8 @@ async function showPrediction(interaction, id, reply) {
 
     const intervalId = async function () {
         const prediction = await getPrediction(interaction.guild, id);
-        const option1Image = new MessageAttachment("./images/option1.png");
-        const option2Image = new MessageAttachment("./images/option2.png");
+        const option1Image = new MessageAttachment("./images/blue1.png");
+        const option2Image = new MessageAttachment("./images/pink2.png");
         const row = new MessageActionRow().addComponents(
             new MessageButton()
                 .setDisabled(!prediction || prediction.closed)
@@ -195,7 +195,7 @@ async function showPrediction(interaction, id, reply) {
         const embed1 = new MessageEmbed()
             .setColor("#387aff")
             .setTitle(`${prediction.options[0].option}${totalVoters1 + totalVoters2 ? ` (${Math.round((totalPoints1 / (totalPoints1 + totalPoints2)) * 100)}%)` : ``}`)
-            .setThumbnail("attachment://option1.png")
+            .setThumbnail("attachment://blue1.png")
             .addFields(
                 {
                     name: "\u200b",
@@ -214,7 +214,7 @@ async function showPrediction(interaction, id, reply) {
         const embed2 = new MessageEmbed()
             .setColor("#f5009b")
             .setTitle(`${prediction.options[1].option}${totalVoters1 + totalVoters2 ? ` (${Math.round((totalPoints2 / (totalPoints1 + totalPoints2)) * 100)}%)` : ``}`)
-            .setThumbnail("attachment://option2.png")
+            .setThumbnail("attachment://pink2.png")
             .addFields(
                 {
                     name: "\u200b",
