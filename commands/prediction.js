@@ -13,7 +13,7 @@ module.exports = async function (interaction) {
   if (!prediction) {
     await interaction.reply({
       content:
-        (message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`),
+        (message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/predictions\` to list all the active predictions.`),
       ephemeral: true,
     });
     return;

@@ -1,5 +1,5 @@
 /**
- * /cancel command to cancel a prediction.
+ * /delete command to delete a prediction.
  *
  * @author Toby Stayner <toby@swengineer.dev>
  */

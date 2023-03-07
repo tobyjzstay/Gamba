@@ -1,5 +1,5 @@
 /**
- * /gamba command which lists all the active predictions.
+ * /predictions command which lists all the active predictions.
  *
  * @author Toby Stayner <toby@swengineer.dev>
  */

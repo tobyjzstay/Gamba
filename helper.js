@@ -19,7 +19,6 @@ module.exports = {
     archivePrediction,
     predictPoints,
     setClosedPrediction,
-    endPrediction,
     cancelPrediction,
     createPrediction,
     closePredictionTimer,
@@ -85,6 +84,7 @@ async function addAllPoints(guild, increment) {
 
 async function getPrediction(guild, id) {
     try {
+        // should fetch data stored in memory
         const predictionsActiveData = await readData(guild, path.predictionsActive);
         return predictionsActiveData[id] ? predictionsActiveData[id] : matchUUID();
 
@@ -127,7 +127,11 @@ async function showPrediction(interaction, id, reply) {
                 .setCustomId(`${prediction.uuid}_${id}_${prediction.closed ? "end" : "close"}`)
                 .setLabel(prediction.closed ? "End" : "Close")
                 .setStyle("SUCCESS"),
-            new MessageButton().setDisabled(!prediction).setCustomId(`${prediction.uuid}_${id}_cancel`).setLabel("Cancel").setStyle("DANGER")
+            new MessageButton()
+                .setDisabled(!prediction)
+                .setCustomId(`${prediction.uuid}_${id}_cancel`)
+                .setLabel("Cancel")
+                .setStyle("DANGER")
         );
 
         const closes = new Date(prediction.closes);
@@ -163,7 +167,15 @@ async function showPrediction(interaction, id, reply) {
         const embedTitle = new MessageEmbed()
             .setColor("#404040")
             .setTitle(`#${id}: ${prediction.name}`)
-            .setDescription(!prediction ? "Prediction cancelled" : prediction.closed ? "Prediction closed" : timeLeft <= 0 || !time ? "Prediction closing..." : `Prediction closes in ${time}`)
+            .setDescription(
+                !prediction
+                    ? "Prediction cancelled"
+                    : prediction.closed
+                    ? "Prediction closed"
+                    : timeLeft <= 0 || !time
+                    ? "Prediction closing..."
+                    : `Prediction closes in ${time}`
+            )
             .setAuthor({
                 name: `${member.user.tag}`,
                 iconURL: `${member.user.displayAvatarURL()}`,
@@ -194,13 +206,23 @@ async function showPrediction(interaction, id, reply) {
         const totalVoters2 = Object.keys(voters2).length;
         const embed1 = new MessageEmbed()
             .setColor("#387aff")
-            .setTitle(`${prediction.options[0].option}${totalVoters1 + totalVoters2 ? ` (${Math.round((totalPoints1 / (totalPoints1 + totalPoints2)) * 100)}%)` : ``}`)
+            .setTitle(
+                `${prediction.options[0].option}${
+                    totalVoters1 + totalVoters2
+                        ? ` (${Math.round((totalPoints1 / (totalPoints1 + totalPoints2)) * 100)}%)`
+                        : ``
+                }`
+            )
             .setThumbnail("attachment://blue1.png")
             .addFields(
                 {
                     name: "\u200b",
                     value: `:yellow_circle: **Total Points:** ${formatNumber(totalPoints1)}
-            :trophy: **Return Ratio:** 1:${totalPoints2 / totalPoints1 < 1 ? Math.round((totalPoints2 / totalPoints1 + 1) * 100) / 100 : Math.round((totalPoints2 / totalPoints1) * 100) / 100}
+            :trophy: **Return Ratio:** 1:${
+                totalPoints2 / totalPoints1 < 1
+                    ? Math.round((totalPoints2 / totalPoints1 + 1) * 100) / 100
+                    : Math.round((totalPoints2 / totalPoints1) * 100) / 100
+            }
             :family_man_girl: **Total Voters:** ${Object.keys(prediction.options[0].voters).length}
             :medal: ${topVoter1 ? `${topVoter1}: ${formatNumber(topVoters1[0][1])}` : "-"}`,
                     inline: true,
@@ -213,13 +235,23 @@ async function showPrediction(interaction, id, reply) {
             );
         const embed2 = new MessageEmbed()
             .setColor("#f5009b")
-            .setTitle(`${prediction.options[1].option}${totalVoters1 + totalVoters2 ? ` (${Math.round((totalPoints2 / (totalPoints1 + totalPoints2)) * 100)}%)` : ``}`)
+            .setTitle(
+                `${prediction.options[1].option}${
+                    totalVoters1 + totalVoters2
+                        ? ` (${Math.round((totalPoints2 / (totalPoints1 + totalPoints2)) * 100)}%)`
+                        : ``
+                }`
+            )
             .setThumbnail("attachment://pink2.png")
             .addFields(
                 {
                     name: "\u200b",
                     value: `:yellow_circle: **Total Points:** ${formatNumber(totalPoints2)}
-            :trophy: **Return Ratio:** 1:${totalPoints1 / totalPoints2 < 1 ? Math.round((totalPoints1 / totalPoints2 + 1) * 100) / 100 : Math.round((totalPoints1 / totalPoints2) * 100) / 100}
+            :trophy: **Return Ratio:** 1:${
+                totalPoints1 / totalPoints2 < 1
+                    ? Math.round((totalPoints1 / totalPoints2 + 1) * 100) / 100
+                    : Math.round((totalPoints1 / totalPoints2) * 100) / 100
+            }
             :family_man_girl: **Total Voters:** ${Object.keys(prediction.options[1].voters).length}
             :medal: ${topVoter2 ? `${topVoter2}: ${formatNumber(topVoters2[0][1])}` : "-"}`,
                     inline: true,
@@ -272,12 +304,20 @@ async function archivePrediction(guild, id) {
         let updatedPredictionsArchiveData = predictionsArchiveData;
         updatedPredictionsArchiveData.push(prediction);
 
-        fs.writeFileSync(`${path.predictionsArchive}${guild.id}.json`, JSON.stringify(updatedPredictionsArchiveData, null, 2), "utf-8");
+        fs.writeFileSync(
+            `${path.predictionsArchive}${guild.id}.json`,
+            JSON.stringify(updatedPredictionsArchiveData, null, 2),
+            "utf-8"
+        );
 
         const predictionsActiveData = await readData(guild, path.predictionsActive);
         let updatedPredictionsActiveData = predictionsActiveData;
         delete updatedPredictionsActiveData[id];
-        fs.writeFileSync(`${path.predictionsActive}${guild.id}.json`, JSON.stringify(updatedPredictionsActiveData, null, 2), "utf-8");
+        fs.writeFileSync(
+            `${path.predictionsActive}${guild.id}.json`,
+            JSON.stringify(updatedPredictionsActiveData, null, 2),
+            "utf-8"
+        );
     } catch (err) {
         console.error(err);
         await initialiseGuild(guild);
@@ -289,7 +329,7 @@ async function predictPoints(interaction, prediction, id, index, amount) {
     const points = await getPoints(interaction.guild, interaction.user.id);
     let message;
     if (!prediction) {
-        message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`;
+        message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/predictions\` to list all the active predictions.`;
     } else if (index <= 0 || index > prediction.options.length) {
         message = `Invalid input for **index**. Enter an integer between **1** and **${prediction.options.length}**.`;
     } else if (amount <= 0 || amount > points) {
@@ -302,7 +342,9 @@ async function predictPoints(interaction, prediction, id, index, amount) {
             const voters = prediction.options[option].voters;
             const opt = new Number(option) + 1;
             if (voters[interaction.user.id] && opt != index) {
-                message = `You have already predicted "${name}" (**${opt}**) for **${formatNumber(voters[interaction.user.id])}** point${amount === 1 ? "" : "s"}.`;
+                message = `You have already predicted "${name}" (**${opt}**) for **${formatNumber(
+                    voters[interaction.user.id]
+                )}** point${amount === 1 ? "" : "s"}.`;
                 break;
             }
         }
@@ -329,7 +371,11 @@ async function predictPoints(interaction, prediction, id, index, amount) {
 
     await interaction.reply({
         allowedMentions: { users: [] },
-        content: `${interaction.user} has predicted **#${id}** "${prediction.options[index - 1].option}" (**${index}**) for **${formatNumber(amount)}** point${amount === 1 ? "" : "s"} (**${formatNumber(predicted)}** point${predicted === 1 ? "" : "s"} total).`,
+        content: `${interaction.user} has predicted **#${id}** "${
+            prediction.options[index - 1].option
+        }" (**${index}**) for **${formatNumber(amount)}** point${amount === 1 ? "" : "s"} (**${formatNumber(
+            predicted
+        )}** point${predicted === 1 ? "" : "s"} total).`,
     });
 }
 
@@ -344,7 +390,11 @@ async function setUserPrediction(guild, userId, id, index, amount) {
     const predictionsActiveData = await readData(guild, path.predictionsActive);
     let updatedPredictionsActiveData = predictionsActiveData;
     updatedPredictionsActiveData[id].options[index].voters[userId] = amount;
-    fs.writeFileSync(`${path.predictionsActive}${guild.id}.json`, JSON.stringify(updatedPredictionsActiveData, null, 2), "utf-8");
+    fs.writeFileSync(
+        `${path.predictionsActive}${guild.id}.json`,
+        JSON.stringify(updatedPredictionsActiveData, null, 2),
+        "utf-8"
+    );
 }
 
 async function setClosedPrediction(interaction, id) {
@@ -353,7 +403,7 @@ async function setClosedPrediction(interaction, id) {
 
     let message;
     if (!prediction) {
-        message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`;
+        message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/predictions\` to list all the active predictions.`;
     } else if (prediction.author !== interaction.user && !interaction.member.permissions.has("ADMINISTRATOR")) {
         message = `You do not have permission. Only ${author} and server administrators can close the prediction **#${id}**.`;
     } else if (prediction.closed) {
@@ -382,7 +432,11 @@ async function closePrediction(guild, id) {
         const predictionsActiveData = await readData(guild, path.predictionsActive);
         let updatedPredictionsActiveData = predictionsActiveData;
         updatedPredictionsActiveData[id].closed = true;
-        fs.writeFileSync(`${path.predictionsActive}${guild.id}.json`, JSON.stringify(updatedPredictionsActiveData, null, 2), "utf-8");
+        fs.writeFileSync(
+            `${path.predictionsActive}${guild.id}.json`,
+            JSON.stringify(updatedPredictionsActiveData, null, 2),
+            "utf-8"
+        );
     } catch (err) {
         console.error(err);
         await initialiseGuild(guild);
@@ -390,68 +444,14 @@ async function closePrediction(guild, id) {
     }
 }
 
-async function endPrediction(interaction, id, index, reply) {
-    const prediction = await getPrediction(interaction.guild, id);
-
-    let message;
-    if (!prediction) {
-        message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`;
-    } else if (prediction.author !== interaction.user && !interaction.member.permissions.has("ADMINISTRATOR")) {
-        message = `You do not have permission. Only ${author} and server administrators can close the prediction **#${id}**.`;
-    } else if (!prediction.closed) {
-        message = `The prediction **#${id}** needs to be closed first before ending. Use \`/close\` to close the prediction.`;
-    } else if (index <= 0 || index > prediction.options.length) {
-        message = `Invalid input for **index**. Enter an integer between **1** and **${prediction.options.length}**.`;
-    }
-
-    if (message) {
-        await interaction.reply({
-            content: message,
-            ephemeral: true,
-        });
-        return;
-    }
-
-    const winnerVoters = prediction.options[index - 1].voters;
-    const totalPointsWon = Object.entries(winnerVoters).reduce((p, i) => p + i[1], 0);
-    let totalPointsLost = 0;
-    for (let i = 0; i < prediction.options.length; i++) {
-        if (i + 1 !== index) totalPointsLost += Object.entries(prediction.options[i].voters).reduce((p, i) => p + i[1], 0);
-    }
-
-    let ratio = totalPointsLost / totalPointsWon;
-
-    for (let winnerVoter in winnerVoters) {
-        winnerVoters[winnerVoter] = Math.round(winnerVoters[winnerVoter] * ratio);
-    }
-
-    // update the points
-    await setAllPoints(interaction.guild, winnerVoters);
-
-    // archive the prediction
-    await archivePrediction(interaction.guild, id);
-
-    const data = {
-        allowedMentions: { users: [] },
-        content: `${interaction.user} ended the prediction **#${id}**. The outcome was "${prediction.options[index - 1].option}" (**${index}**).`,
-    };
-    if (reply) await interaction.reply(data);
-    else {
-        const channel = await interaction.member.guild.channels.cache.get(interaction.channelId);
-        await channel.send(data);
-        await interaction.deferUpdate();
-    }
-    return;
-}
-
 async function cancelPrediction(interaction, id, reply) {
     const prediction = await getPrediction(interaction.guild, id);
 
     let message;
     if (!prediction) {
-        message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/gamba\` to list all the active predictions.`;
+        message = `Invalid input for **id**. The prediction **#${id}** could not be found. Use \`/predictions\` to list all the active predictions.`;
     } else if (prediction.author !== interaction.user && !interaction.member.permissions.has("ADMINISTRATOR")) {
-        message = `You do not have permission. Only ${author} and server administrators can cancel the prediction **#${id}**.`;
+        message = `You do not have permission. Only ${author} and server administrators can delete the prediction **#${id}**.`;
     }
 
     if (message) {
@@ -502,7 +502,8 @@ async function createPrediction(
 
     if (prediction) {
         await interaction.reply({
-            content: (message = `The prediction "${name}" has already been created. Use \`/gamba\` to list all the active predictions.`),
+            content:
+                (message = `The prediction "${name}" has already been created. Use \`/predictions\` to list all the active predictions.`),
             ephemeral: true,
         });
         return;
@@ -550,7 +551,11 @@ async function addPrediction(interaction, prediction) {
             }
         }
 
-        fs.writeFileSync(`${path.predictionsActive}${interaction.guild.id}.json`, JSON.stringify(updatedPredictionsActiveData, null, 2), "utf-8");
+        fs.writeFileSync(
+            `${path.predictionsActive}${interaction.guild.id}.json`,
+            JSON.stringify(updatedPredictionsActiveData, null, 2),
+            "utf-8"
+        );
 
         await showPrediction(interaction, id, false);
         await closePredictionTimer(interaction.guild, id);

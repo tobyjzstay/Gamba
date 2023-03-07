@@ -55,17 +55,19 @@ Create or have an existing Discord account at [Discord](https://discord.com/).
 
 ## Usage
 
-| Command                                                       | Description                  |
-| :------------------------------------------------------------ | :--------------------------- |
-| `/gamba`                                                      | Lists all active predictions |
-| `/points [user]`                                              | Get points                   |
-| `/leaderboard [role] [results]`                               | Show points leaderboard      |
-| `/predict <id> <index> <amount>`                              | Predict with points          |
-| `/prediction <id>`                                            | Show a prediction            |
-| `/create <name> <option1> <option2> [minutes] [hours] [days]` | Create a new prediction      |
-| `/close <id>`                                                 | Close a prediction           |
-| `/end <id> <index>`                                           | End a prediction             |
-| `/cancel <id>`                                                | Cancel a prediction          |
+| Command                                | Description                                                                     |
+| :------------------------------------- | :------------------------------------------------------------------------------ |
+| `/predictions`                         | Display the list of predictions.                                                  |
+| `/prediction <id>`                     | Display the details of a prediction.                                            |
+| `/predict <id> <index> <amount>`       | Predict the outcome of a prediction.                                            |
+| </br>                                  | </br>                                                                           |
+| `/create [<name> <option1> <option2>]` | Create a new prediction.                                                        |
+| `/close <id>`                          | Close a prediction. No new predictions can be made.                             |
+| `/end <id> <index>`                    | End a prediction. Points are distributed to users who made the correct outcome. |
+| `/delete <id>`                         | Delete a prediction. Points are refunded if the prediction has not ended.       |
+| </br>                                  | </br>                                                                           |
+| `/points [user]`                       | Display the points a user has.                                                  |
+| `/leaderboard [role]`                  | Display the users with the most points.                                         |
 
 ## License
 
