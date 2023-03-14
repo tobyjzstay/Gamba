@@ -4,8 +4,10 @@
   "description": "A bot to create predictions based on Twitch Channel Points Predictions",
   "main": "index.js",
   "scripts": {
+    "install": "npm install",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node dist/index.js"
   },
   "repository": {
     "type": "git",
@@ -24,5 +26,8 @@
     "fs": "^0.0.1-security",
     "path": "^0.12.7",
     "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "typescript": "^4.9.5"
   }
 }

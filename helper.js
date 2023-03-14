@@ -115,12 +115,12 @@ async function showPrediction(interaction, id, reply) {
             new MessageButton()
                 .setDisabled(!prediction || prediction.closed)
                 .setCustomId(`${prediction.uuid}_${id}_1`)
-                .setLabel(`Predict "${prediction.options[0].option}"`)
+                .setLabel(`Predict "${prediction.outcomes[0].option}"`)
                 .setStyle("PRIMARY"),
             new MessageButton()
                 .setDisabled(!prediction || prediction.closed)
                 .setCustomId(`${prediction.uuid}_${id}_2`)
-                .setLabel(`Predict "${prediction.options[1].option}"`)
+                .setLabel(`Predict "${prediction.outcomes[1].option}"`)
                 .setStyle("SECONDARY"),
             new MessageButton()
                 .setDisabled(!prediction)
@@ -184,7 +184,7 @@ async function showPrediction(interaction, id, reply) {
                 text: `${prediction.uuid}`,
             });
 
-        const voters1 = prediction.options[0].voters;
+        const voters1 = prediction.outcomes[0].voters;
         const totalPoints1 = Object.entries(voters1).reduce((p, i) => p + i[1], 0);
 
         const topVoters1 = Object.entries(voters1)
@@ -193,7 +193,7 @@ async function showPrediction(interaction, id, reply) {
 
         const topVoter1 = topVoters1[0] ? await interaction.guild.members.fetch(topVoters1[0][0]) : null;
 
-        const voters2 = prediction.options[1].voters;
+        const voters2 = prediction.outcomes[1].voters;
         const totalPoints2 = Object.entries(voters2).reduce((p, i) => p + i[1], 0);
 
         const topVoters2 = Object.entries(voters2)
@@ -207,7 +207,7 @@ async function showPrediction(interaction, id, reply) {
         const embed1 = new MessageEmbed()
             .setColor("#387aff")
             .setTitle(
-                `${prediction.options[0].option}${
+                `${prediction.outcomes[0].option}${
                     totalVoters1 + totalVoters2
                         ? ` (${Math.round((totalPoints1 / (totalPoints1 + totalPoints2)) * 100)}%)`
                         : ``
@@ -223,7 +223,7 @@ async function showPrediction(interaction, id, reply) {
                     ? Math.round((totalPoints2 / totalPoints1 + 1) * 100) / 100
                     : Math.round((totalPoints2 / totalPoints1) * 100) / 100
             }
-            :family_man_girl: **Total Voters:** ${Object.keys(prediction.options[0].voters).length}
+            :family_man_girl: **Total Voters:** ${Object.keys(prediction.outcomes[0].voters).length}
             :medal: ${topVoter1 ? `${topVoter1}: ${formatNumber(topVoters1[0][1])}` : "-"}`,
                     inline: true,
                 },
@@ -236,7 +236,7 @@ async function showPrediction(interaction, id, reply) {
         const embed2 = new MessageEmbed()
             .setColor("#f5009b")
             .setTitle(
-                `${prediction.options[1].option}${
+                `${prediction.outcomes[1].option}${
                     totalVoters1 + totalVoters2
                         ? ` (${Math.round((totalPoints2 / (totalPoints1 + totalPoints2)) * 100)}%)`
                         : ``
@@ -252,7 +252,7 @@ async function showPrediction(interaction, id, reply) {
                     ? Math.round((totalPoints1 / totalPoints2 + 1) * 100) / 100
                     : Math.round((totalPoints1 / totalPoints2) * 100) / 100
             }
-            :family_man_girl: **Total Voters:** ${Object.keys(prediction.options[1].voters).length}
+            :family_man_girl: **Total Voters:** ${Object.keys(prediction.outcomes[1].voters).length}
             :medal: ${topVoter2 ? `${topVoter2}: ${formatNumber(topVoters2[0][1])}` : "-"}`,
                     inline: true,
                 },
@@ -338,8 +338,8 @@ async function predictPoints(interaction, prediction, id, index, amount) {
         message = `The prediction **#${id}** is closed.`;
     } else {
         for (let option in prediction.options) {
-            const name = prediction.options[option].option;
-            const voters = prediction.options[option].voters;
+            const name = prediction.outcomes[option].option;
+            const voters = prediction.outcomes[option].voters;
             const opt = new Number(option) + 1;
             if (voters[interaction.user.id] && opt != index) {
                 message = `You have already predicted "${name}" (**${opt}**) for **${formatNumber(
@@ -359,7 +359,7 @@ async function predictPoints(interaction, prediction, id, index, amount) {
     }
 
     // calculate new user prediction
-    let predicted = new Number(prediction.options[index - 1].voters[interaction.user.id]);
+    let predicted = new Number(prediction.outcomes[index - 1].voters[interaction.user.id]);
     if (isNaN(predicted)) predicted = 0;
     predicted += amount;
 
@@ -372,7 +372,7 @@ async function predictPoints(interaction, prediction, id, index, amount) {
     await interaction.reply({
         allowedMentions: { users: [] },
         content: `${interaction.user} has predicted **#${id}** "${
-            prediction.options[index - 1].option
+            prediction.outcomes[index - 1].option
         }" (**${index}**) for **${formatNumber(amount)}** point${amount === 1 ? "" : "s"} (**${formatNumber(
             predicted
         )}** point${predicted === 1 ? "" : "s"} total).`,
@@ -389,7 +389,7 @@ async function setPoints(guild, userId, points) {
 async function setUserPrediction(guild, userId, id, index, amount) {
     const predictionsActiveData = await readData(guild, path.predictionsActive);
     let updatedPredictionsActiveData = predictionsActiveData;
-    updatedPredictionsActiveData[id].options[index].voters[userId] = amount;
+    updatedPredictionsActiveData[id].outcomes[index].voters[userId] = amount;
     fs.writeFileSync(
         `${path.predictionsActive}${guild.id}.json`,
         JSON.stringify(updatedPredictionsActiveData, null, 2),
@@ -464,7 +464,7 @@ async function cancelPrediction(interaction, id, reply) {
 
     const refundVoters = {};
     for (let i = 0; i < prediction.options.length; i++) {
-        const voters = prediction.options[i].voters;
+        const voters = prediction.outcomes[i].voters;
         for (let voter in voters) {
             refundVoters[voter] = voters[voter];
         }

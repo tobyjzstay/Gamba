@@ -114,11 +114,11 @@ client.on("interactionCreate", async (interaction) => {
                             const row = new MessageActionRow().addComponents(
                                 new MessageButton()
                                     .setCustomId(`${prediction.uuid}_${args[1]}_end_1`)
-                                    .setLabel(`Prediction "${prediction.options[0].option}"`)
+                                    .setLabel(`Prediction "${prediction.outcomes[0].option}"`)
                                     .setStyle("PRIMARY"),
                                 new MessageButton()
                                     .setCustomId(`${prediction.uuid}_${args[1]}_end_2`)
-                                    .setLabel(`Prediction "${prediction.options[1].option}"`)
+                                    .setLabel(`Prediction "${prediction.outcomes[1].option}"`)
                                     .setStyle("SECONDARY")
                             );
 
@@ -176,7 +176,7 @@ client.on("interactionCreate", async (interaction) => {
                     }
 
                     await interaction.reply({
-                        content: `Predicting **#${args[1]}** "${prediction.options[args[2] - 1].option}" (**${
+                        content: `Predicting **#${args[1]}** "${prediction.outcomes[args[2] - 1].option}" (**${
                             args[2]
                         }**). You have **${formatNumber(points)}** point${
                             points === 1 ? "" : "s"
@@ -231,7 +231,7 @@ client.on("interactionCreate", async (interaction) => {
                             );
 
                             await interaction.reply({
-                                content: `Predicting **#${args[1]}** "${prediction3.options[args[2] - 1].option}" (**${
+                                content: `Predicting **#${args[1]}** "${prediction3.outcomes[args[2] - 1].option}" (**${
                                     args[2]
                                 }**). Are you sure you want to go **ALL IN**?`,
                                 ephemeral: true,

@@ -40,12 +40,12 @@ async function endPrediction(interaction, id, index, reply) {
         return;
     }
 
-    const winnerVoters = prediction.options[index - 1].voters;
+    const winnerVoters = prediction.outcomes[index - 1].voters;
     const totalPointsWon = Object.entries(winnerVoters).reduce((p, i) => p + i[1], 0);
     let totalPointsLost = 0;
     for (let i = 0; i < prediction.options.length; i++) {
         if (i + 1 !== index)
-            totalPointsLost += Object.entries(prediction.options[i].voters).reduce((p, i) => p + i[1], 0);
+            totalPointsLost += Object.entries(prediction.outcomes[i].voters).reduce((p, i) => p + i[1], 0);
     }
 
     let ratio = totalPointsLost / totalPointsWon;
@@ -63,7 +63,7 @@ async function endPrediction(interaction, id, index, reply) {
     const data = {
         allowedMentions: { users: [] },
         content: `${interaction.user} ended the prediction **#${id}**. The outcome was "${
-            prediction.options[index - 1].option
+            prediction.outcomes[index - 1].option
         }" (**${index}**).`,
     };
     if (reply) await interaction.reply(data);
