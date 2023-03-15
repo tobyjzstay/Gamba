@@ -7,7 +7,7 @@
 const { Client, Intents, MessageActionRow, MessageButton } = require("discord.js");
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
-const { path, clientId, token } = require("./config.json");
+const { path, clientId, token } = require("../config.json");
 const {
     initialiseGuild,
     readData,
