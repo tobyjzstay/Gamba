@@ -26,3 +26,4 @@ dist/
 # gamba
 data/
 config.json
+.env
