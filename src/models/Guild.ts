@@ -9,6 +9,11 @@ export interface Guild extends mongoose.Document {
     archive: Prediction[];
 }
 
-const guildSchema = new mongoose.Schema({});
+const guildSchema = new mongoose.Schema({
+    guildId: { type: String, required: true, unique: true },
+    users: { type: Array, required: true, default: [] }, // TODO
+    predictions: { type: Array, required: true, default: [] },
+    archive: { type: Array, required: true, default: [] },
+});
 
 export const Guild = mongoose.model<Guild>("Guild", guildSchema);

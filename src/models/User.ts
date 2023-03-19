@@ -6,7 +6,7 @@ export interface User extends mongoose.Document {
 }
 
 const userSchema = new mongoose.Schema({
-    userId: { type: String, required: true },
+    userId: { type: String, required: true, unique: true },
     points: { type: Number, required: true, default: 0 },
 });
 

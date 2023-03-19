@@ -8,9 +8,9 @@ import { Command } from "..";
 
 export default {
     data: new SlashCommandBuilder()
-        .setName("points")
-        .setDescription("Display the points a user has.")
-        .addUserOption((option) => option.setName("user").setDescription("The user to display points for")),
+        .setName("leaderboard")
+        .setDescription("Display the users with the most points.")
+        .addRoleOption((option) => option.setName("role").setDescription("Role to filter by")),
     async execute(interaction: CommandInteraction) {
         await interaction.reply("TODO");
     },
