@@ -4,13 +4,20 @@
  * @author Toby Stayner <toby@swengineer.dev>
  */
 
-import { Client, CommandInteraction, Events, GatewayIntentBits, REST, Routes, SlashCommandBuilder } from "discord.js";
+import {
+    Client,
+    CommandInteraction,
+    Events,
+    GatewayIntentBits,
+    Guild,
+    REST,
+    Routes,
+    SlashCommandBuilder
+} from "discord.js";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import fs from "node:fs";
 import path from "node:path";
-import { Guild } from "./models/Guild";
-import { closePrediction } from "./models/Prediction";
 
 export type Command = {
     data: SlashCommandBuilder;
@@ -21,7 +28,7 @@ export type Command = {
 dotenv.config();
 
 // load database
-let guilds: mongoose.mongo.Collection<Guild> | null = null;
+let db: mongoose.mongo.Db;
 (async () => {
     console.log("Connecting to MongoDB...");
     // connect to mongodb
@@ -34,14 +41,16 @@ let guilds: mongoose.mongo.Collection<Guild> | null = null;
     console.log("Connected to MongoDB.");
 
     // initialise database
-    guilds = mongoClient.db(process.env.ENVRIONMENT).collection("guild");
+    db = mongoClient.db(process.env.ENVRIONMENT);
 
     // close expired predictions
-    guilds.find({ predictions: { closed: false } }).forEach((guild) => {
-        guild.predictions
-            .filter((prediction) => !prediction.closed && prediction.end.getTime() < Date.now())
-            .forEach(closePrediction);
-    });
+    // db.collection("guilds")
+    //     .find({ predictions: { closed: false } })
+    //     .forEach((guild) => {
+    //         guild.predictions
+    //             .filter((prediction) => !prediction.closed && prediction.end.getTime() < Date.now())
+    //             .forEach(closePrediction);
+    //     });
 })();
 
 // initialise client
@@ -89,6 +98,14 @@ client.login(process.env.DISCORD_TOKEN);
 
 client.once(Events.ClientReady, (c) => {
     console.log(`Ready! Logged in as ${c.user.tag}`);
+
+    if (!db) {
+        console.warn("Database not initialised.");
+        return;
+    }
+    c.guilds.cache.forEach(updateGuild);
+
+    // update users in database?
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -118,3 +135,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
     }
 });
+
+async function updateGuild(guild: Guild) {
+    try {
+        const guildData = db.collection("guilds");
+        guildData.findOneAndUpdate({ id: guild.id }, { $set: { id: guild.id } }, { upsert: true });
+        (await guild.members.fetch()).forEach((member) => {
+            guildData.findOneAndUpdate(
+                { id: guild.id, "users.id": member.user.id },
+                { $set: { id: guild.id, "users.id": member.user.id } },
+                { upsert: true }
+            );
+        });
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+// async function addAllPoints(guild: Guild) {
+//     try {
+//         const pointsData = await readData(guild, path.points);
+//         let updatedPointsData = {};
+
+//         await guild.members.fetch(); // cache update
+//         guild.roles.everyone.members.forEach((member) => {
+//             // don't add points to bots
+//             if (member.user.bot) updatedPointsData[member.user.id] = 0;
+//             else updatedPointsData[member.user.id] = pointsData[member.user.id] + increment;
+//         });
+
+//         fs.writeFileSync(`${path.points}${guild.id}.json`, JSON.stringify(updatedPointsData, null, 2), "utf-8");
+//     } catch (err) {
+//         console.error(err);
+//         await initialiseGuild(guild);
+//         return await addAllPoints(guild, increment);
+//     }
+// }
