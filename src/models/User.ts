@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 
 export interface User extends mongoose.Document {
-    userId: string;
+    id: string;
     points: number;
 }
 
 const userSchema = new mongoose.Schema({
-    userId: { type: String, required: true, unique: true },
+    id: { type: String, required: true, unique: true },
     points: { type: Number, required: true, default: 0 },
 });
 

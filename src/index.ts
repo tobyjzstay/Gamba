@@ -18,6 +18,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import fs from "node:fs";
 import path from "node:path";
+import GuildDB from "./models/Guild";
 
 export type Command = {
     data: SlashCommandBuilder;
@@ -33,7 +34,9 @@ let db: mongoose.mongo.Db;
     console.log("Connecting to MongoDB...");
     // connect to mongodb
     const mongoClient = await mongoose
-        .connect(process.env.MONGO_URI!)
+        .connect(process.env.MONGO_URI!, {
+            dbName: process.env.ENVIRONMENT,
+        })
         .then((client) => client.connection.getClient())
         .catch((error) => console.error(error));
 
@@ -41,16 +44,7 @@ let db: mongoose.mongo.Db;
     console.log("Connected to MongoDB.");
 
     // initialise database
-    db = mongoClient.db(process.env.ENVRIONMENT);
-
-    // close expired predictions
-    // db.collection("guilds")
-    //     .find({ predictions: { closed: false } })
-    //     .forEach((guild) => {
-    //         guild.predictions
-    //             .filter((prediction) => !prediction.closed && prediction.end.getTime() < Date.now())
-    //             .forEach(closePrediction);
-    //     });
+    db = mongoClient.db(process.env.ENVIRONMENT);
 })();
 
 // initialise client
@@ -136,14 +130,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 });
 
+// on guild join, add guild to database
+client.on(Events.GuildCreate, (guild) => {
+    updateGuild(guild);
+});
+
 async function updateGuild(guild: Guild) {
     try {
-        const guildData = db.collection("guilds");
-        guildData.findOneAndUpdate({ id: guild.id }, { $set: { id: guild.id } }, { upsert: true });
+        const guildData = GuildDB.findOneAndUpdate({ id: guild.id }, { id: guild.id }, { upsert: true });
         (await guild.members.fetch()).forEach((member) => {
-            guildData.findOneAndUpdate(
-                { id: guild.id, "users.id": member.user.id },
-                { $set: { id: guild.id, "users.id": member.user.id } },
+            guildData.find().findOneAndUpdate(
+                {
+                    users: {
+                        id: member.user.id,
+                    },
+                },
+                {
+                    users: {
+                        id: member.user.id,
+                    },
+                },
                 { upsert: true }
             );
         });
@@ -151,6 +157,13 @@ async function updateGuild(guild: Guild) {
         console.error(error);
     }
 }
+
+// async function getPredictions(guildId: string) {
+//     const guildData = db.collection("guilds");
+//     guildData.findOne({ id: guildId }).then((guild) => {
+
+//     })
+// }
 
 // async function addAllPoints(guild: Guild) {
 //     try {

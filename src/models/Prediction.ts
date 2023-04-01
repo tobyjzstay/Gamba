@@ -26,7 +26,7 @@ type Predictor = {
 const predictionSchema = new mongoose.Schema({
     name: { type: String, required: true },
     uuid: { type: String, required: true, unique: true, default: v4 },
-    outcomes: { type: Array, required: true, default: [] },
+    outcomes: [{ type: Array, required: true, default: [] }],
     start: { type: Date, required: true, default: Date.now }, // TODO: remove?
     end: { type: Date, required: true },
     closed: { type: Boolean, required: true, default: false },
